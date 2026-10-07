@@ -96,5 +96,11 @@ void main() {
     await controller.load();
     await tester.pumpWidget(MemoApp(controller: controller));
     expect(tester.takeException(), isNull);
+    (controller.store as MemoryStore).fail = true;
+    await tester.enterText(find.byType(TextField), 'A task');
+    await tester.tap(find.byTooltip('Add task'));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(find.textContaining('Could not save'), findsOneWidget);
   });
 }

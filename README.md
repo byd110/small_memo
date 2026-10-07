@@ -3,6 +3,8 @@
 A small, local todo list for **iOS, Windows, and Linux**, built with Flutter.
 Create a task, check it off, and get back to what you were doing.
 
+![Small Memo desktop preview with example tasks](docs/preview.png)
+
 ## First version
 
 - One list; add tasks with Enter or the + button.
