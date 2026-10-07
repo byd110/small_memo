@@ -50,12 +50,16 @@ void main() {
     await tester.tap(find.byType(Checkbox));
     await tester.pumpAndSettle();
     expect(store.tasks.single.done, isFalse);
-    await tester.tap(find.byTooltip('Delete Buy tea'));
+    await tester.tap(find.byTooltip('Task options for Buy tea'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Delete task'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();
     expect(store.tasks, hasLength(1));
-    await tester.tap(find.byTooltip('Delete Buy tea'));
+    await tester.tap(find.byTooltip('Task options for Buy tea'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Delete task'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Delete'));
     await tester.pumpAndSettle();

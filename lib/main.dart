@@ -8,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'task_controller.dart';
+import 'task_views.dart';
 import 'task_store.dart';
 
 Future<void> main() async {
@@ -198,13 +199,35 @@ class _MemoPageState extends State<MemoPage> {
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              'Small Memo',
-                              style: Theme.of(context).textTheme.headlineMedium
-                                  ?.copyWith(
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: -1,
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    'Small Memo',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .headlineMedium
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.w700,
+                                          letterSpacing: -1,
+                                        ),
                                   ),
+                                ),
+                                IconButton(
+                                  tooltip: 'Attempt summary',
+                                  icon: const Icon(Icons.bar_chart),
+                                  onPressed: controller.ready
+                                      ? () => Navigator.push(
+                                          context,
+                                          MaterialPageRoute<void>(
+                                            builder: (_) => SummaryPage(
+                                              controller: controller,
+                                            ),
+                                          ),
+                                        )
+                                      : null,
+                                ),
+                              ],
                             ),
                             const SizedBox(height: 6),
                             Text(
@@ -311,89 +334,10 @@ class _MemoPageState extends State<MemoPage> {
                                           const Divider(height: 1),
                                       itemBuilder: (context, index) {
                                         final task = tasks[index];
-                                        return Padding(
+                                        return TaskTile(
                                           key: ValueKey(task.id),
-                                          padding: const EdgeInsets.symmetric(
-                                            vertical: 6,
-                                          ),
-                                          child: Row(
-                                            children: [
-                                              Checkbox(
-                                                value: task.done,
-                                                semanticLabel: task.title,
-                                                onChanged: controller.busy
-                                                    ? null
-                                                    : (_) => controller.toggle(
-                                                        task.id,
-                                                      ),
-                                              ),
-                                              Expanded(
-                                                child: Text(
-                                                  task.title,
-                                                  style: TextStyle(
-                                                    fontSize: 16,
-                                                    color: task.done
-                                                        ? Colors.grey.shade600
-                                                        : null,
-                                                    decoration: task.done
-                                                        ? TextDecoration
-                                                              .lineThrough
-                                                        : null,
-                                                  ),
-                                                ),
-                                              ),
-                                              IconButton(
-                                                tooltip: 'Delete ${task.title}',
-                                                icon: const Icon(
-                                                  Icons.close,
-                                                  size: 18,
-                                                ),
-                                                onPressed: controller.busy
-                                                    ? null
-                                                    : () async {
-                                                        final confirmed = await showDialog<bool>(
-                                                          context: context,
-                                                          builder: (context) => AlertDialog(
-                                                            title: const Text(
-                                                              'Delete task?',
-                                                            ),
-                                                            content: Text(
-                                                              task.title,
-                                                            ),
-                                                            actions: [
-                                                              TextButton(
-                                                                onPressed: () =>
-                                                                    Navigator.pop(
-                                                                      context,
-                                                                      false,
-                                                                    ),
-                                                                child:
-                                                                    const Text(
-                                                                      'Cancel',
-                                                                    ),
-                                                              ),
-                                                              TextButton(
-                                                                onPressed: () =>
-                                                                    Navigator.pop(
-                                                                      context,
-                                                                      true,
-                                                                    ),
-                                                                child:
-                                                                    const Text(
-                                                                      'Delete',
-                                                                    ),
-                                                              ),
-                                                            ],
-                                                          ),
-                                                        );
-                                                        if (confirmed == true) {
-                                                          await controller
-                                                              .delete(task.id);
-                                                        }
-                                                      },
-                                              ),
-                                            ],
-                                          ),
+                                          task: task,
+                                          controller: controller,
                                         );
                                       },
                                     ),

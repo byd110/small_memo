@@ -8,7 +8,11 @@ Create a task, check it off, and get back to what you were doing.
 ## First version
 
 - One list; add tasks with Enter or the + button.
-- Check and uncheck tasks. Completed tasks move below unfinished tasks.
+- Log an attempt each time you work on a task. The counter opens a timestamped history.
+- Edit a description from the task's menu without losing its attempts or completion state.
+- Remove an accidental attempt from its history, with confirmation.
+- View attempt summaries for Today, Last 7 days, Last 30 days, All time, or custom dates.
+- Check and uncheck tasks independently of attempts. Completed tasks move below unfinished tasks.
 - Delete a task with confirmation.
 - Save on this device; no account, server, reminders, or subscriptions.
 - Desktop: **Ctrl+Alt+M** restores and focuses the running app, **Ctrl+N**
@@ -76,12 +80,32 @@ debug signing key unless you configure a private `android/key.properties` file.
 For long-term personal use, configure a stable private key before storing tasks;
 CI APKs use temporary signing keys and are intended for testing.
 
+## Attempts and summaries
+
+**Log attempt** records one timestamp at the moment you press it; it is not a
+running timer or a duration measurement. Counts are derived from the stored
+history, so editing a description does not reset progress. Completed tasks can
+still have attempts recorded, and appear in summaries.
+
+Timestamps are stored in UTC and displayed in the device's current local timezone
+(to the second). Summary ranges use local calendar dates. Last 7/30 days includes
+today; custom ranges include both selected dates. Summaries default to Last 7
+days but you can change the period each time. Tasks with no attempts in the range
+appear with zero. Deleting a task deletes its history and removes it from summaries;
+use Edit for description changes, or mark it completed to preserve its history.
+
 ## Storage
 
 `tasks.json` is saved in the platform's application support directory, obtained
 through `path_provider`. Tasks are plain text JSON, not encrypted. Data is local
 to each device and uninstalling the app can remove it. Back up this file with the
 app closed if you need to preserve it.
+
+Version 0.2 reads existing version-1 task files as tasks with no attempts. On the
+first save it preserves the original file as `tasks.json.v1.bak` and writes the
+new version-2 format. Older app versions cannot read the new format: keep using
+0.2 or newer once you start recording attempts. The legacy backup does not contain
+any attempts recorded after upgrading.
 
 Each save flushes a temporary file before replacing the previous file. A process
 lock prevents simultaneous app instances from writing over each other. If the

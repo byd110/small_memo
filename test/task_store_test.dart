@@ -42,7 +42,7 @@ void main() {
 
   test('unknown schema and duplicate IDs are rejected', () async {
     final store = FileTaskStore(file);
-    await file.writeAsString('{"version":2,"tasks":[]}');
+    await file.writeAsString('{"version":99,"tasks":[]}');
     await expectLater(store.load(), throwsFormatException);
     await file.writeAsString(
       '{"version":1,"tasks":['

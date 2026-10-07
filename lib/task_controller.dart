@@ -5,7 +5,10 @@ import 'task.dart';
 import 'task_store.dart';
 
 class TaskController extends ChangeNotifier {
-  TaskController(this.store);
+  TaskController(this.store, {DateTime Function()? now})
+    : _now = now ?? DateTime.now;
+
+  final DateTime Function() _now;
 
   final TaskStore store;
   List<Task> _tasks = [];
@@ -41,6 +44,40 @@ class TaskController extends ChangeNotifier {
     for (final task in _tasks)
       if (task.id == id) task.toggled() else task,
   ]);
+
+  Future<bool> edit(String id, String title) async {
+    title = title.trim();
+    if (title.isEmpty || title.length > 500) return false;
+    return _update(id, (task) => task.copyWith(title: title));
+  }
+
+  Future<bool> recordAttempt(String id) => _update(
+    id,
+    (task) => task.copyWith(
+      attempts: [
+        ...task.attempts,
+        Attempt(id: const Uuid().v4(), at: _now().toUtc()),
+      ],
+    ),
+  );
+
+  Future<bool> removeAttempt(String taskId, String attemptId) => _update(
+    taskId,
+    (task) => task.copyWith(
+      attempts: [
+        for (final attempt in task.attempts)
+          if (attempt.id != attemptId) attempt,
+      ],
+    ),
+  );
+
+  Future<bool> _update(String id, Task Function(Task) change) async {
+    if (!_tasks.any((task) => task.id == id)) return false;
+    return _save([
+      for (final task in _tasks)
+        if (task.id == id) change(task) else task,
+    ]);
+  }
 
   Future<bool> delete(String id) => _save([
     for (final task in _tasks)
