@@ -1,0 +1,69 @@
+name: Build and test
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.6'
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: dart format --output=none --set-exit-if-changed lib test
+      - run: flutter analyze
+      - run: flutter test
+
+  native:
+    needs: check
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            platform: linux
+            command: flutter build linux --release
+            bundle: build/linux/x64/release/bundle/
+          - os: windows-latest
+            platform: windows
+            command: flutter build windows --release
+            bundle: build/windows/x64/runner/Release/
+          - os: macos-latest
+            platform: ios
+            command: flutter build ios --release --no-codesign
+            bundle: build/ios/iphoneos/
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Linux build dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev libkeybinder-3.0-dev
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.6'
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: ${{ matrix.command }}
+      - name: Archive Linux bundle preserving executable permissions
+        if: matrix.platform == 'linux'
+        run: tar -czf small-memo-linux.tar.gz -C build/linux/x64/release/bundle .
+      - uses: actions/upload-artifact@v4
+        if: matrix.platform == 'linux'
+        with:
+          name: small-memo-linux
+          path: small-memo-linux.tar.gz
+      - uses: actions/upload-artifact@v4
+        if: matrix.platform == 'windows'
+        with:
+          name: small-memo-windows
+          path: ${{ matrix.bundle }}
