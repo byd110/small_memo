@@ -1,6 +1,6 @@
 # Small Memo
 
-A small, local todo list for **iOS, Windows, and Linux**, built with Flutter.
+A small, local todo list for **iOS, Android, Windows, and Linux**, built with Flutter.
 Create a task, check it off, and get back to what you were doing.
 
 ![Small Memo desktop preview with example tasks](docs/preview.png)
@@ -13,7 +13,7 @@ Create a task, check it off, and get back to what you were doing.
 - Save on this device; no account, server, reminders, or subscriptions.
 - Desktop: **Ctrl+Alt+M** restores and focuses the running app, **Ctrl+N**
   focuses task entry, and **Escape** minimizes it. Closing the window quits.
-- iOS: launch from the home screen.
+- iOS and Android: launch from the home screen.
 
 The desktop shortcut works only while the app is running. Registration can fail
 if another application owns the shortcut. Linux global shortcuts use Keybinder
@@ -57,17 +57,24 @@ not just the executable. Target computers need the Visual C++ runtime.
 
 ### iOS
 
-Use macOS with Xcode and the Flutter iOS prerequisites. Open
-`ios/Runner.xcworkspace` to select your signing team and a unique bundle ID.
+Follow the [iPhone installation guide](docs/iphone-install.md) for Xcode setup,
+free Personal Team signing, a standalone Release build, and weekly renewal.
+The minimum iOS version is 15.0. CI only checks an unsigned build; that build
+cannot be installed directly on an iPhone.
+
+### Android
+
+Follow the [Android installation and compatibility guide](docs/android-install.md).
+Android 7.0/API 24 or newer is required. Build an APK with:
 
 ```sh
-flutter run -d <device-id>
-flutter build ios --release
+flutter build apk --release
 ```
 
-The CI build uses `--no-codesign` to check compilation. It does **not** produce an
-installable iPhone release; device distribution requires signing. There is no
-App Store or TestFlight release yet.
+The APK is at `build/app/outputs/flutter-apk/app-release.apk`. It uses your local
+debug signing key unless you configure a private `android/key.properties` file.
+For long-term personal use, configure a stable private key before storing tasks;
+CI APKs use temporary signing keys and are intended for testing.
 
 ## Storage
 
@@ -98,6 +105,6 @@ service prices, not a promise of a free production service; see
 ## Automation
 
 GitHub Actions runs analysis, persistence/UI tests, and native builds on Linux,
-Windows, and macOS (unsigned iOS). Desktop bundles are uploaded as workflow
-artifacts. Platform build success does not replace testing global shortcuts and
+Windows, Android, and macOS (unsigned iOS). Desktop bundles and an Android
+test APK are uploaded as workflow artifacts. Platform build success does not replace testing global shortcuts and
 iOS behavior on real devices.
