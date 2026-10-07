@@ -1,7 +1,7 @@
 name: small_memo
 description: A small, local todo list for iOS, Android, Windows, and Linux.
 publish_to: none
-version: 0.2.0+2
+version: 0.2.1+3
 
 environment:
   sdk: ^3.10.0

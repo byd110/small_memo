@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:small_memo/main.dart';
 import 'package:small_memo/task.dart';
@@ -29,6 +30,52 @@ void main() {
       tester.widget<TextField>(find.byType(TextField)).focusNode!.hasFocus,
       isTrue,
     );
+  });
+
+  testWidgets('desktop shortcuts work without an active text field', (
+    tester,
+  ) async {
+    final calls = <MethodCall>[];
+    const channel = MethodChannel('window_manager');
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(channel, (
+      call,
+    ) async {
+      calls.add(call);
+      return null;
+    });
+    addTearDown(
+      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        channel,
+        null,
+      ),
+    );
+    final controller = TaskController(MemoryStore());
+    await controller.load();
+    await tester.pumpWidget(MemoApp(controller: controller, desktop: true));
+    await tester.pumpAndSettle();
+    final input = tester.widget<TextField>(find.byType(TextField)).focusNode!;
+    input.unfocus();
+    await tester.pumpAndSettle();
+    expect(input.hasFocus, isFalse);
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+    expect(calls.map((call) => call.method), contains('minimize'));
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyN);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+    await tester.pumpAndSettle();
+    expect(input.hasFocus, isTrue);
+    await controller.add('Read');
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Task options for Read'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Edit description'));
+    await tester.pumpAndSettle();
+    calls.clear();
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+    expect(find.byType(AlertDialog), findsNothing);
+    expect(calls.where((call) => call.method == 'minimize'), isEmpty);
   });
 
   testWidgets('create, check, uncheck, and confirm deletion', (tester) async {

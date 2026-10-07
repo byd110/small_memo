@@ -174,190 +174,195 @@ class _MemoPageState extends State<MemoPage> {
       const SingleActivator(LogicalKeyboardKey.keyN, control: true):
           _focus.requestFocus,
     },
-    child: Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 640),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(24, 28, 24, 16),
-              child: LayoutBuilder(
-                builder: (context, constraints) => SingleChildScrollView(
-                  child: SizedBox(
-                    height: math.max(420, constraints.maxHeight),
-                    child: ListenableBuilder(
-                      listenable: widget.controller,
-                      builder: (context, _) {
-                        final controller = widget.controller;
-                        final remaining = controller.tasks
-                            .where((task) => !task.done)
-                            .length;
-                        final tasks = [
-                          ...controller.tasks.where((task) => !task.done),
-                          ...controller.tasks.where((task) => task.done),
-                        ];
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    'Small Memo',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .headlineMedium
-                                        ?.copyWith(
-                                          fontWeight: FontWeight.w700,
-                                          letterSpacing: -1,
-                                        ),
-                                  ),
-                                ),
-                                IconButton(
-                                  tooltip: 'Attempt summary',
-                                  icon: const Icon(Icons.bar_chart),
-                                  onPressed: controller.ready
-                                      ? () => Navigator.push(
-                                          context,
-                                          MaterialPageRoute<void>(
-                                            builder: (_) => SummaryPage(
-                                              controller: controller,
-                                            ),
+    // Keep a focus target inside the shortcut handler when no control owns focus.
+    // Otherwise unfocusing the entry moves focus to the route above this handler.
+    child: FocusScope(
+      autofocus: widget.desktop,
+      child: Scaffold(
+        body: SafeArea(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 640),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(24, 28, 24, 16),
+                child: LayoutBuilder(
+                  builder: (context, constraints) => SingleChildScrollView(
+                    child: SizedBox(
+                      height: math.max(420, constraints.maxHeight),
+                      child: ListenableBuilder(
+                        listenable: widget.controller,
+                        builder: (context, _) {
+                          final controller = widget.controller;
+                          final remaining = controller.tasks
+                              .where((task) => !task.done)
+                              .length;
+                          final tasks = [
+                            ...controller.tasks.where((task) => !task.done),
+                            ...controller.tasks.where((task) => task.done),
+                          ];
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      'Small Memo',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .headlineMedium
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.w700,
+                                            letterSpacing: -1,
                                           ),
-                                        )
-                                      : null,
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              '$remaining ${remaining == 1 ? 'thing' : 'things'} to do',
-                              style: Theme.of(context).textTheme.bodyLarge,
-                            ),
-                            const SizedBox(height: 24),
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Expanded(
-                                  child: TextField(
-                                    controller: _text,
-                                    focusNode: _focus,
-                                    autofocus: widget.desktop,
-                                    enabled:
-                                        controller.ready && !controller.busy,
-                                    maxLength: 500,
-                                    textCapitalization:
-                                        TextCapitalization.sentences,
-                                    textInputAction: TextInputAction.done,
-                                    decoration: const InputDecoration(
-                                      hintText: 'What needs doing?',
-                                      labelText: 'New task',
-                                      counterText: '',
                                     ),
-                                    onSubmitted: (_) => _add(),
                                   ),
-                                ),
-                                const SizedBox(width: 8),
-                                SizedBox(
-                                  height: 56,
-                                  child: IconButton.filled(
-                                    tooltip: 'Add task',
-                                    onPressed:
-                                        controller.ready && !controller.busy
-                                        ? _add
+                                  IconButton(
+                                    tooltip: 'Attempt summary',
+                                    icon: const Icon(Icons.bar_chart),
+                                    onPressed: controller.ready
+                                        ? () => Navigator.push(
+                                            context,
+                                            MaterialPageRoute<void>(
+                                              builder: (_) => SummaryPage(
+                                                controller: controller,
+                                              ),
+                                            ),
+                                          )
                                         : null,
-                                    icon: const Icon(Icons.add),
                                   ),
-                                ),
-                              ],
-                            ),
-                            if (controller.error != null)
-                              Padding(
-                                padding: const EdgeInsets.only(top: 12),
-                                child: Semantics(
-                                  liveRegion: true,
-                                  child: Text(
-                                    controller.error!,
-                                    maxLines: 3,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.error,
-                                    ),
-                                  ),
-                                ),
+                                ],
                               ),
-                            if (!controller.ready && !controller.busy)
-                              TextButton(
-                                onPressed: controller.load,
-                                child: const Text('Try again'),
-                              ),
-                            const SizedBox(height: 12),
-                            Expanded(
-                              child: !controller.ready
-                                  ? Center(
-                                      child: controller.busy
-                                          ? const CircularProgressIndicator()
-                                          : const Icon(
-                                              Icons.folder_off_outlined,
-                                            ),
-                                    )
-                                  : tasks.isEmpty
-                                  ? Center(
-                                      child: SingleChildScrollView(
-                                        child: Column(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(
-                                              Icons.check_circle_outline,
-                                              size: 44,
-                                              color: Theme.of(
-                                                context,
-                                              ).colorScheme.primary,
-                                            ),
-                                            const SizedBox(height: 12),
-                                            const Text(
-                                              'A little room to think.',
-                                            ),
-                                            const SizedBox(height: 4),
-                                            const Text(
-                                              'Add your first task above.',
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    )
-                                  : ListView.separated(
-                                      itemCount: tasks.length,
-                                      separatorBuilder: (_, _) =>
-                                          const Divider(height: 1),
-                                      itemBuilder: (context, index) {
-                                        final task = tasks[index];
-                                        return TaskTile(
-                                          key: ValueKey(task.id),
-                                          task: task,
-                                          controller: controller,
-                                        );
-                                      },
-                                    ),
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              widget.desktop
-                                  ? widget.shortcutNotice ??
-                                        'Ctrl+Alt+M to open · Esc to minimize'
-                                  : 'Saved on this device',
-                              style: Theme.of(context).textTheme.bodySmall,
-                            ),
-                            if (widget.desktop)
+                              const SizedBox(height: 6),
                               Text(
-                                'Saved on this device',
+                                '$remaining ${remaining == 1 ? 'thing' : 'things'} to do',
+                                style: Theme.of(context).textTheme.bodyLarge,
+                              ),
+                              const SizedBox(height: 24),
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    child: TextField(
+                                      controller: _text,
+                                      focusNode: _focus,
+                                      autofocus: widget.desktop,
+                                      enabled:
+                                          controller.ready && !controller.busy,
+                                      maxLength: 500,
+                                      textCapitalization:
+                                          TextCapitalization.sentences,
+                                      textInputAction: TextInputAction.done,
+                                      decoration: const InputDecoration(
+                                        hintText: 'What needs doing?',
+                                        labelText: 'New task',
+                                        counterText: '',
+                                      ),
+                                      onSubmitted: (_) => _add(),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  SizedBox(
+                                    height: 56,
+                                    child: IconButton.filled(
+                                      tooltip: 'Add task',
+                                      onPressed:
+                                          controller.ready && !controller.busy
+                                          ? _add
+                                          : null,
+                                      icon: const Icon(Icons.add),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              if (controller.error != null)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 12),
+                                  child: Semantics(
+                                    liveRegion: true,
+                                    child: Text(
+                                      controller.error!,
+                                      maxLines: 3,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.error,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              if (!controller.ready && !controller.busy)
+                                TextButton(
+                                  onPressed: controller.load,
+                                  child: const Text('Try again'),
+                                ),
+                              const SizedBox(height: 12),
+                              Expanded(
+                                child: !controller.ready
+                                    ? Center(
+                                        child: controller.busy
+                                            ? const CircularProgressIndicator()
+                                            : const Icon(
+                                                Icons.folder_off_outlined,
+                                              ),
+                                      )
+                                    : tasks.isEmpty
+                                    ? Center(
+                                        child: SingleChildScrollView(
+                                          child: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(
+                                                Icons.check_circle_outline,
+                                                size: 44,
+                                                color: Theme.of(
+                                                  context,
+                                                ).colorScheme.primary,
+                                              ),
+                                              const SizedBox(height: 12),
+                                              const Text(
+                                                'A little room to think.',
+                                              ),
+                                              const SizedBox(height: 4),
+                                              const Text(
+                                                'Add your first task above.',
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      )
+                                    : ListView.separated(
+                                        itemCount: tasks.length,
+                                        separatorBuilder: (_, _) =>
+                                            const Divider(height: 1),
+                                        itemBuilder: (context, index) {
+                                          final task = tasks[index];
+                                          return TaskTile(
+                                            key: ValueKey(task.id),
+                                            task: task,
+                                            controller: controller,
+                                          );
+                                        },
+                                      ),
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                widget.desktop
+                                    ? widget.shortcutNotice ??
+                                          'Ctrl+Alt+M to open · Esc to minimize'
+                                    : 'Saved on this device',
                                 style: Theme.of(context).textTheme.bodySmall,
                               ),
-                          ],
-                        );
-                      },
+                              if (widget.desktop)
+                                Text(
+                                  'Saved on this device',
+                                  style: Theme.of(context).textTheme.bodySmall,
+                                ),
+                            ],
+                          );
+                        },
+                      ),
                     ),
                   ),
                 ),
