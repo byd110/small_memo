@@ -18,6 +18,19 @@ class MemoryStore implements TaskStore {
 }
 
 void main() {
+  testWidgets('desktop task entry gains focus after storage loads', (
+    tester,
+  ) async {
+    final controller = TaskController(MemoryStore());
+    await tester.pumpWidget(MemoApp(controller: controller, desktop: true));
+    await controller.load();
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<TextField>(find.byType(TextField)).focusNode!.hasFocus,
+      isTrue,
+    );
+  });
+
   testWidgets('create, check, uncheck, and confirm deletion', (tester) async {
     final store = MemoryStore();
     final controller = TaskController(store);

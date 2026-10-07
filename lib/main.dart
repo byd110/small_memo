@@ -130,9 +130,27 @@ class MemoPage extends StatefulWidget {
 class _MemoPageState extends State<MemoPage> {
   final _text = TextEditingController();
   final _focus = FocusNode();
+  bool _wasReady = false;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_focusWhenLoaded);
+    _focusWhenLoaded();
+  }
+
+  void _focusWhenLoaded() {
+    if (widget.desktop && widget.controller.ready && !_wasReady) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _focus.requestFocus();
+      });
+    }
+    _wasReady = widget.controller.ready;
+  }
 
   @override
   void dispose() {
+    widget.controller.removeListener(_focusWhenLoaded);
     _text.dispose();
     _focus.dispose();
     super.dispose();
