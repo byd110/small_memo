@@ -2,10 +2,11 @@
 
 The Android app uses the same task list, local storage, and offline behavior as
 the other versions. Minimum OS: **Android 7.0 / API 24**. It does not use Google
-Play Services, Firebase, a sign-in provider, reminders, or a background service.
-The release manifest requests no internet or storage permission. Android cloud
-backup is disabled; this is a local-only app, and uninstalling it deletes its data.
-Debug builds request internet permission for Flutter's debugger.
+Play Services, Firebase, reminders, or a background service. Optional email/password
+sign-in and device sync use Supabase. The release manifest requests internet
+permission for sync, but no shared-storage permission. Android cloud backup is
+disabled; uninstalling deletes local files and any changes not yet synced.
+See the [Supabase setup guide](supabase-setup.md) before signing in.
 
 ## Build and install on your phone
 

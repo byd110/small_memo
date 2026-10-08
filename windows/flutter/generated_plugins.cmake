@@ -3,8 +3,11 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
+  app_links
+  flutter_secure_storage_windows
   hotkey_manager_windows
   screen_retriever_windows
+  url_launcher_windows
   window_manager
 )
 

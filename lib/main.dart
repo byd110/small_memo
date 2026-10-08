@@ -6,6 +6,12 @@ import 'package:flutter/services.dart';
 import 'package:hotkey_manager/hotkey_manager.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import 'account_page.dart';
+import 'secure_session_storage.dart';
+import 'supabase_config.dart';
+import 'sync_service.dart';
 
 import 'task_controller.dart';
 import 'task_views.dart';
@@ -54,14 +60,39 @@ Future<void> main() async {
     final directory = await getApplicationSupportDirectory();
     final store = FileTaskStore(File('${directory.path}/tasks.json'));
     final controller = TaskController(store);
+    SyncService? sync;
+    String? syncNotice;
+    try {
+      final sessionStorage = SecureSessionStorage();
+      await Supabase.initialize(
+        url: supabaseUrl,
+        publishableKey: supabasePublishableKey,
+        authOptions: FlutterAuthClientOptions(
+          localStorage: sessionStorage,
+          detectSessionInUri: false,
+        ),
+      );
+      sync = SyncService(
+        controller,
+        directory,
+        Supabase.instance.client,
+        sessionStorage: sessionStorage,
+      );
+    } catch (_) {
+      syncNotice =
+          'Sync unavailable. Check your OS credential store and restart.';
+    }
     runApp(
       MemoApp(
         controller: controller,
+        sync: sync,
+        syncNotice: syncNotice,
         desktop: desktop,
         shortcutNotice: shortcutNotice,
       ),
     );
     await controller.load();
+    await sync?.start();
   } catch (e) {
     runApp(
       MaterialApp(
@@ -86,10 +117,14 @@ class MemoApp extends StatelessWidget {
     required this.controller,
     this.desktop = false,
     this.shortcutNotice,
+    this.sync,
+    this.syncNotice,
   });
   final TaskController controller;
   final bool desktop;
   final String? shortcutNotice;
+  final SyncService? sync;
+  final String? syncNotice;
 
   @override
   Widget build(BuildContext context) => MaterialApp(
@@ -109,6 +144,8 @@ class MemoApp extends StatelessWidget {
       controller: controller,
       desktop: desktop,
       shortcutNotice: shortcutNotice,
+      sync: sync,
+      syncNotice: syncNotice,
     ),
   );
 }
@@ -119,10 +156,14 @@ class MemoPage extends StatefulWidget {
     required this.controller,
     required this.desktop,
     this.shortcutNotice,
+    this.sync,
+    this.syncNotice,
   });
   final TaskController controller;
   final bool desktop;
   final String? shortcutNotice;
+  final SyncService? sync;
+  final String? syncNotice;
 
   @override
   State<MemoPage> createState() => _MemoPageState();
@@ -190,7 +231,10 @@ class _MemoPageState extends State<MemoPage> {
                     child: SizedBox(
                       height: math.max(420, constraints.maxHeight),
                       child: ListenableBuilder(
-                        listenable: widget.controller,
+                        listenable: Listenable.merge([
+                          widget.controller,
+                          widget.sync,
+                        ]),
                         builder: (context, _) {
                           final controller = widget.controller;
                           final remaining = controller.tasks
@@ -217,6 +261,20 @@ class _MemoPageState extends State<MemoPage> {
                                           ),
                                     ),
                                   ),
+                                  if (widget.sync != null)
+                                    IconButton(
+                                      tooltip: 'Account & sync',
+                                      icon: const Icon(
+                                        Icons.account_circle_outlined,
+                                      ),
+                                      onPressed: () => Navigator.push(
+                                        context,
+                                        MaterialPageRoute<void>(
+                                          builder: (_) =>
+                                              AccountPage(sync: widget.sync!),
+                                        ),
+                                      ),
+                                    ),
                                   IconButton(
                                     tooltip: 'Attempt summary',
                                     icon: const Icon(Icons.bar_chart),
@@ -351,12 +409,16 @@ class _MemoPageState extends State<MemoPage> {
                                 widget.desktop
                                     ? widget.shortcutNotice ??
                                           'Ctrl+Alt+M to open · Esc to minimize'
-                                    : 'Saved on this device',
+                                    : widget.syncNotice ??
+                                          widget.sync?.status ??
+                                          'Saved on this device',
                                 style: Theme.of(context).textTheme.bodySmall,
                               ),
                               if (widget.desktop)
                                 Text(
-                                  'Saved on this device',
+                                  widget.syncNotice ??
+                                      widget.sync?.status ??
+                                      'Saved on this device',
                                   style: Theme.of(context).textTheme.bodySmall,
                                 ),
                             ],

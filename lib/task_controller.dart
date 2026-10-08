@@ -10,13 +10,49 @@ class TaskController extends ChangeNotifier {
 
   final DateTime Function() _now;
 
-  final TaskStore store;
+  TaskStore store;
   List<Task> _tasks = [];
   bool ready = false;
   bool busy = false;
   String? error;
 
   List<Task> get tasks => List.unmodifiable(_tasks);
+
+  /// Network requests run outside this guard; only their local commit holds it.
+  Future<bool> applyExternal(Future<List<Task>> Function() change) async {
+    if (!ready || busy) return false;
+    busy = true;
+    notifyListeners();
+    try {
+      _tasks = await change();
+      return true;
+    } finally {
+      busy = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> changeStore(TaskStore next) async {
+    if (busy) throw StateError('A local save is still in progress');
+    ready = false;
+    busy = true;
+    _tasks = [];
+    error = null;
+    notifyListeners();
+    final previous = store;
+    store = next;
+    try {
+      if (previous is FileTaskStore) await previous.close();
+      _tasks = await next.load();
+      ready = true;
+    } catch (_) {
+      error = 'Could not open this account’s local data. Restart to retry.';
+      rethrow;
+    } finally {
+      busy = false;
+      notifyListeners();
+    }
+  }
 
   Future<void> load() async {
     busy = true;

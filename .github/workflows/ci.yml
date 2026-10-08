@@ -23,8 +23,29 @@ jobs:
       - run: flutter analyze
       - run: flutter test
 
+  database:
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: local-ci-test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PGHOST: localhost
+      PGUSER: postgres
+      PGPASSWORD: local-ci-test
+    steps:
+      - uses: actions/checkout@v4
+      - run: psql -v ON_ERROR_STOP=1 -f supabase/tests/bootstrap.sql
+      - run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/202610070001_personal_sync.sql
+      - run: psql -v ON_ERROR_STOP=1 -f supabase/tests/sync.sql
+
   native:
-    needs: check
+    needs: [check, database]
     strategy:
       fail-fast: false
       matrix:
@@ -46,7 +67,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install Linux build dependencies
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev libkeybinder-3.0-dev
+        run: sudo apt-get update && sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev libkeybinder-3.0-dev libsecret-1-dev
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.47.6'
@@ -70,7 +91,7 @@ jobs:
 
   android:
     name: Android APK
-    needs: check
+    needs: [check, database]
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4

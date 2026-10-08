@@ -91,8 +91,9 @@ Replace the placeholder with the iPhone identifier printed by `flutter devices`.
 
 When the seven-day provisioning period expires, reconnect the phone and repeat
 step 4. Keep the same bundle identifier and team, and install over the existing
-app. **Do not delete the app first**: its tasks are local and deleting it can
-remove them. There is currently no cross-device sync or in-app export feature.
+app. **Do not delete the app first**: doing so can remove local tasks and unsynced
+changes. Optional [Supabase sync](supabase-setup.md) preserves uploaded account
+data; local-only tasks still need a file backup. There is no in-app export feature.
 
 If installation fails, start with the full message under Xcode's Signing &
 Capabilities panel. Common causes are a non-unique bundle identifier, no selected
