@@ -1,0 +1,67 @@
+name: Scan existing Windows artifact
+
+on:
+  workflow_dispatch:
+    inputs:
+      artifact_id:
+        description: Existing small-memo-windows artifact ID to investigate
+        required: true
+        default: '11520219612'
+  push:
+    paths:
+      - '.github/workflows/windows-security.yml'
+      - 'scripts/scan-windows.ps1'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  scan:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download the existing artifact and verify its archive digest
+        uses: actions/github-script@v7
+        env:
+          ARTIFACT_ID: ${{ inputs.artifact_id || '11520219612' }}
+        with:
+          script: |
+            const fs = require('fs');
+            const crypto = require('crypto');
+            const id = Number(process.env.ARTIFACT_ID);
+            if (!Number.isSafeInteger(id) || id <= 0) throw new Error('Invalid artifact ID');
+            const {data: artifact} = await github.rest.actions.getArtifact({
+              ...context.repo, artifact_id: id,
+            });
+            if (artifact.name !== 'small-memo-windows' || artifact.expired) {
+              throw new Error('Expected an unexpired small-memo-windows artifact');
+            }
+            const download = await github.rest.actions.downloadArtifact({
+              ...context.repo, artifact_id: id, archive_format: 'zip',
+            });
+            const bytes = Buffer.from(download.data);
+            const digest = 'sha256:' + crypto.createHash('sha256').update(bytes).digest('hex');
+            fs.mkdirSync('security-report', {recursive: true});
+            fs.writeFileSync('security-report/provenance.json', JSON.stringify({
+              artifact_id: id, name: artifact.name, source_run: artifact.workflow_run,
+              expected_digest: artifact.digest, downloaded_digest: digest,
+              scanned_at: new Date().toISOString(),
+            }, null, 2));
+            if (!artifact.digest || digest !== artifact.digest) {
+              throw new Error('Archive digest is missing or does not match GitHub metadata');
+            }
+            fs.mkdirSync('scan-input', {recursive: true});
+            fs.writeFileSync('scan-input/windows.zip', bytes);
+            core.info(`Verified artifact ${id}: ${digest}`);
+      - name: Scan with current Microsoft Defender signatures
+        shell: pwsh
+        run: ./scripts/scan-windows.ps1
+      - name: Save scan evidence (not executable downloads)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-security-report
+          path: security-report/
+          if-no-files-found: error
