@@ -13,10 +13,12 @@ and click **Run** once. The transaction creates three tables and a `memo_sync`
 function. Then run
 [`202610240001_priority_order.sql`](../supabase/migrations/202610240001_priority_order.sql)
 to add priorities, task ordering, and the `memo_sync_v2` endpoint used by 0.4.
-**Existing projects that already ran the first migration need only the new migration.**
-Apply each migration once. Until the upgrade is installed, 0.4 retains pending
+Then run [`202610240002_finished_archive.sql`](../supabase/migrations/202610240002_finished_archive.sql)
+for completion dates, archiving, and the `memo_sync_v3` endpoint used by 0.5.
+**If both earlier migrations were already applied, run only the finished/archive migration.**
+Apply each migration once, in that order. Until the upgrade is installed, 0.5 retains pending
 changes locally and reports that database setup is needed; it does not silently
-discard priority data. No live database changes are made by installing the app.
+discard priority or archive data. No live database changes are made by installing the app.
 
 Do not run `supabase/tests` files in your project: those create mock
 Auth objects for an isolated test database only.
@@ -75,12 +77,20 @@ old work, normal account switching never imports anything automatically.
   highest). Dragging into a group changes priority; dragging within it changes
   order. Unclassified remains available as a drop destination even when empty.
   Set priority accepts whole numbers from 1 through 2,147,483,647. Empty numbered
-  groups disappear; new tasks start Unclassified. Checking a task keeps its order.
+  groups disappear. Enter a number beside New task to choose its priority immediately;
+  leave blank for Unclassified. The entry keeps its selected priority for subsequent tasks.
+- Checking a task moves it to Finished at the bottom. Unchecking returns it to its
+  priority group. Finished tasks have Archive now; the Finished header has Archive all.
+  Automatic archiving occurs 30 days after completion, on open/resume/sync or within
+  a minute while running. Archived tasks remain in summaries and in the Archive view;
+  uncheck there to reopen. Tasks finished before this upgrade get a 30-day grace period.
+- Archive changes sync across your devices. A delayed archive is ignored if another
+  device has reopened the task or completed it again with a newer completion date.
 - Priority and position sync together for each changed task. Simultaneous offline
   reorders use the last placement received for each task; equal positions use task
   IDs to ensure all devices show the same order. Independent title and attempt
-  edits remain intact. Update every device to 0.4 to view and change priorities;
-  0.3 clients can still edit existing fields without erasing server priorities.
+  edits remain intact. Update every device to 0.5 for the same grouping and archive behavior;
+  older clients do not hide archived tasks.
 - Description and completion edits are independent. If two devices edit the same
   field while offline, the last change **received by the server** wins. Device
   clocks do not determine the winner.
@@ -105,7 +115,7 @@ ignored by Git and restricted to its local owner. It is for administration, not
 app authentication. Flutter does not load or bundle that file.
 
 The local-only list remains `tasks.json`. Account files are
-`account-<user-id>.json`. Both use version 4 in app 0.4, containing the task cache and durable upload
+`account-<user-id>.json`. Both use version 5 in app 0.5, containing the task cache and durable upload
 queue in one atomic write. Keep a backup with the app closed before changing or
 reinstalling it. An older version of Small Memo cannot display account files.
 

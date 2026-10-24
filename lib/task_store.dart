@@ -40,7 +40,7 @@ class FileTaskStore implements TaskStore {
       if (await file.exists()) {
         final data = jsonDecode(await file.readAsString());
         if (data is! Map<String, dynamic> ||
-            ![1, 2, 3, 4].contains(data['version']) ||
+            ![1, 2, 3, 4, 5].contains(data['version']) ||
             data['tasks'] is! List) {
           throw const FormatException('Unrecognized task file');
         }
@@ -59,9 +59,14 @@ class FileTaskStore implements TaskStore {
           if (_version >= 2 && item['attempts'] is! List) {
             throw const FormatException('Missing attempt history');
           }
-          if (_version == 4 &&
+          if (_version >= 4 &&
               (!item.containsKey('priority') || item['position'] is! int)) {
             throw const FormatException('Missing task placement');
+          }
+          if (_version >= 5 &&
+              (!item.containsKey('completed_at') ||
+                  !item.containsKey('archived_at'))) {
+            throw const FormatException('Missing lifecycle timestamps');
           }
           final task = Task.fromJson({
             ...item,
@@ -87,21 +92,21 @@ class FileTaskStore implements TaskStore {
 
   Future<void> saveState(List<Task> tasks, Map<String, dynamic>? state) async {
     if (!_loaded || _lock == null) throw StateError('Store is not loaded');
-    if (_version < 4 && await file.exists()) {
+    if (_version < 5 && await file.exists()) {
       final backup = File('${file.path}.v$_version.bak');
       if (!await backup.exists()) await file.copy(backup.path);
     }
     final temporary = File('${file.path}.tmp');
     await temporary.writeAsString(
       jsonEncode({
-        'version': 4,
+        'version': 5,
         'tasks': tasks.map((task) => task.toJson()).toList(),
         'sync': ?state,
       }),
       flush: true,
     );
     await temporary.rename(file.path);
-    _version = 4;
+    _version = 5;
     syncState = state;
   }
 

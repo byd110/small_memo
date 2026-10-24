@@ -94,7 +94,7 @@ void main() {
       await controller.edit('old', 'New');
       await store.close();
       expect(await File('${file.path}.v1.bak').readAsString(), original);
-      expect(jsonDecode(await file.readAsString())['version'], 4);
+      expect(jsonDecode(await file.readAsString())['version'], 5);
       final reopened = FileTaskStore(file);
       final saved = (await reopened.load()).single;
       expect(saved.title, 'New');

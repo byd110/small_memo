@@ -14,7 +14,10 @@ Create a task, check it off, and get back to what you were doing.
 - View attempt summaries for Today, Last 7 days, Last 30 days, All time, or custom dates.
 - Group tasks by numeric priority: Unclassified first, then Priority 1, 2, and so on.
 - Drag the handle to reorder tasks or move them into another priority group.
-- Use Set priority to create any numbered group; Move up/down also works without dragging.
+- Enter a priority number when creating a task (blank = Unclassified); the entry remembers your selection until you close the app. Set priority changes existing tasks.
+- Finished tasks move to a group at the bottom, retaining their priority for reopening.
+- Archive one finished task or all finished tasks immediately; automatic archiving hides tasks 30 days after completion.
+- Open Archive to see saved history or uncheck a task to reopen it. Archived tasks remain in attempt summaries.
 - Check and uncheck tasks independently of attempts. Completed tasks keep their chosen position.
 - Delete a task with confirmation.
 - Save locally first; optionally sign in to sync tasks and attempts across your own devices.
@@ -99,6 +102,13 @@ days but you can change the period each time. Tasks with no attempts in the rang
 appear with zero. Deleting a task deletes its history and removes it from summaries;
 use Edit for description changes, or mark it completed to preserve its history.
 
+Archiving is checked when the app opens, resumes, receives synced data, and once
+per minute while running. If the app is closed, overdue tasks are archived the next
+time it opens. The interval is exactly 30 days since the latest completion, not a
+calendar month. Previously finished tasks without dates receive a full 30-day grace
+period on upgrade. Reopening clears completion/archive dates; completing again
+starts a new period. Archiving never deletes descriptions or attempts.
+
 ## Storage
 
 `tasks.json` is saved in the platform's application support directory, obtained
@@ -106,10 +116,10 @@ through `path_provider`. Tasks are plain text JSON, not encrypted. Local-only da
 you sign in and set up the database. Uninstalling can remove unsynced local changes. Back up this file with the
 app closed if you need to preserve it.
 
-Version 0.4 reads existing version-1/2/3 files, defaults old tasks to Unclassified,
+Version 0.5 reads existing version-1/2/3/4 files, defaults old tasks to Unclassified,
 and preserves their stored list order. On the first save it keeps the original
-file as `tasks.json.vN.bak` (or `account-<id>.json.vN.bak`) and writes version 4,
-which includes priority and position. Keep using 0.4 or newer after upgrading;
+file as `tasks.json.vN.bak` (or `account-<id>.json.vN.bak`) and writes version 5,
+which includes priority, position, completion and archive timestamps. Keep using 0.5 or newer after upgrading;
 older app versions cannot open these new local files. The backup contains only
 data saved before the upgrade.
 
@@ -117,14 +127,15 @@ Each save flushes a temporary file before replacing the previous file. A process
 lock prevents simultaneous app instances from writing over each other. If the
 file is unreadable, the app preserves it and displays an error instead of
 silently resetting your list. Changes that fail to save do not appear completed.
-Account caches and pending changes are saved together in version-4
+Account caches and pending changes are saved together in version-5
 `account-<user-id>.json` files. Sessions use the OS credential store.
 
 ## Personal device sync
 
 Follow the [Supabase setup guide](docs/supabase-setup.md) to run the SQL migration,
 create your app account, and import existing local tasks. Existing Supabase projects
-must also apply the **202610240001 priority/order migration** before 0.4 can sync. The supplied project URL
+must apply the **202610240001 priority/order migration** followed by the
+**202610240002 finished/archive migration** before 0.5 can sync. The supplied project URL
 and publishable key are configured in the app; the database password is never
 included. Sign into the same account on each device. Other accounts have separate
 lists; inviting other users is not supported.

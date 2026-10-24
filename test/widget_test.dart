@@ -27,7 +27,10 @@ void main() {
     await controller.load();
     await tester.pumpAndSettle();
     expect(
-      tester.widget<TextField>(find.byType(TextField)).focusNode!.hasFocus,
+      tester
+          .widget<TextField>(find.widgetWithText(TextField, 'New task'))
+          .focusNode!
+          .hasFocus,
       isTrue,
     );
   });
@@ -53,7 +56,9 @@ void main() {
     await controller.load();
     await tester.pumpWidget(MemoApp(controller: controller, desktop: true));
     await tester.pumpAndSettle();
-    final input = tester.widget<TextField>(find.byType(TextField)).focusNode!;
+    final input = tester
+        .widget<TextField>(find.widgetWithText(TextField, 'New task'))
+        .focusNode!;
     input.unfocus();
     await tester.pumpAndSettle();
     expect(input.hasFocus, isFalse);
@@ -84,7 +89,10 @@ void main() {
     await controller.load();
     await tester.pumpWidget(MemoApp(controller: controller));
     expect(find.text('A little room to think.'), findsOneWidget);
-    await tester.enterText(find.byType(TextField), '  Buy tea  ');
+    await tester.enterText(
+      find.widgetWithText(TextField, 'New task'),
+      '  Buy tea  ',
+    );
     await tester.testTextInput.receiveAction(TextInputAction.done);
     await tester.pumpAndSettle();
     expect(find.text('Buy tea'), findsOneWidget);
@@ -120,13 +128,19 @@ void main() {
     final controller = TaskController(store);
     await controller.load();
     await tester.pumpWidget(MemoApp(controller: controller));
-    await tester.enterText(find.byType(TextField), 'Keep this draft');
+    await tester.enterText(
+      find.widgetWithText(TextField, 'New task'),
+      'Keep this draft',
+    );
     await tester.tap(find.byTooltip('Add task'));
     await tester.pumpAndSettle();
     expect(controller.tasks, isEmpty);
     expect(find.textContaining('Could not save'), findsOneWidget);
     expect(
-      tester.widget<TextField>(find.byType(TextField)).controller!.text,
+      tester
+          .widget<TextField>(find.widgetWithText(TextField, 'New task'))
+          .controller!
+          .text,
       'Keep this draft',
     );
   });
@@ -161,7 +175,10 @@ void main() {
     await tester.pumpWidget(MemoApp(controller: controller));
     expect(tester.takeException(), isNull);
     (controller.store as MemoryStore).fail = true;
-    await tester.enterText(find.byType(TextField), 'A task');
+    await tester.enterText(
+      find.widgetWithText(TextField, 'New task'),
+      'A task',
+    );
     await tester.tap(find.byTooltip('Add task'));
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);

@@ -59,6 +59,8 @@ class TaskTile extends StatelessWidget {
                     builder: (_) =>
                         EditTaskDialog(task: task, controller: controller),
                   );
+                } else if (value == 'archive') {
+                  await controller.archive(task.id);
                 } else if (value == 'priority') {
                   await showDialog<void>(
                     context: context,
@@ -67,7 +69,12 @@ class TaskTile extends StatelessWidget {
                   );
                 } else if (value == 'up' || value == 'down') {
                   final group = controller.tasks
-                      .where((t) => t.priority == task.priority)
+                      .where(
+                        (t) =>
+                            t.priority == task.priority &&
+                            !t.done &&
+                            !t.archived,
+                      )
                       .toList();
                   final index = group.indexWhere((t) => t.id == task.id);
                   if (value == 'up' && index > 0) {
@@ -110,11 +117,18 @@ class TaskTile extends StatelessWidget {
                   if (confirmed == true) await controller.delete(task.id);
                 }
               },
-              itemBuilder: (_) => const [
+              itemBuilder: (_) => [
                 PopupMenuItem(value: 'edit', child: Text('Edit description')),
                 PopupMenuItem(value: 'priority', child: Text('Set priority')),
-                PopupMenuItem(value: 'up', child: Text('Move up')),
-                PopupMenuItem(value: 'down', child: Text('Move down')),
+                if (!task.done)
+                  const PopupMenuItem(value: 'up', child: Text('Move up')),
+                if (!task.done)
+                  const PopupMenuItem(value: 'down', child: Text('Move down')),
+                if (task.done && !task.archived)
+                  const PopupMenuItem(
+                    value: 'archive',
+                    child: Text('Archive now'),
+                  ),
                 PopupMenuItem(value: 'delete', child: Text('Delete task')),
               ],
             ),

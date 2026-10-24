@@ -108,7 +108,9 @@ class _PriorityTaskListState extends State<PriorityTaskList> {
 
   @override
   Widget build(BuildContext context) {
-    final tasks = widget.controller.tasks;
+    final tasks = widget.controller.tasks
+        .where((t) => !t.done && !t.archived)
+        .toList();
     final priorities = <int?>[
       null,
       ...tasks.map((t) => t.priority).whereType<int>().toSet().toList()..sort(),
@@ -176,6 +178,41 @@ class _PriorityTaskListState extends State<PriorityTaskList> {
                       ),
                     ),
             ),
+          ),
+        );
+      }
+    }
+    final finished = widget.controller.tasks
+        .where((t) => t.done && !t.archived)
+        .toList();
+    if (finished.isNotEmpty) {
+      children.add(
+        Padding(
+          padding: const EdgeInsets.only(top: 16),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Finished',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+              ),
+              TextButton(
+                onPressed: widget.controller.busy
+                    ? null
+                    : widget.controller.archiveAllFinished,
+                child: const Text('Archive all'),
+              ),
+            ],
+          ),
+        ),
+      );
+      for (final task in finished) {
+        children.add(
+          TaskTile(
+            key: ValueKey(task.id),
+            task: task,
+            controller: widget.controller,
           ),
         );
       }

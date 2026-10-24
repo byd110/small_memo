@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -14,6 +15,8 @@ import 'supabase_config.dart';
 import 'sync_service.dart';
 
 import 'task_controller.dart';
+import 'task.dart';
+import 'archive_page.dart';
 import 'task_views.dart';
 import 'priority_views.dart';
 import 'task_store.dart';
@@ -170,7 +173,10 @@ class MemoPage extends StatefulWidget {
   State<MemoPage> createState() => _MemoPageState();
 }
 
-class _MemoPageState extends State<MemoPage> {
+class _MemoPageState extends State<MemoPage> with WidgetsBindingObserver {
+  final _priority = TextEditingController();
+  String? _priorityError;
+  Timer? _archiveTimer;
   final _text = TextEditingController();
   final _focus = FocusNode();
   bool _wasReady = false;
@@ -178,6 +184,11 @@ class _MemoPageState extends State<MemoPage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _archiveTimer = Timer.periodic(
+      const Duration(minutes: 1),
+      (_) => widget.controller.archiveExpired(),
+    );
     widget.controller.addListener(_focusWhenLoaded);
     _focusWhenLoaded();
   }
@@ -193,14 +204,32 @@ class _MemoPageState extends State<MemoPage> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _archiveTimer?.cancel();
+    _priority.dispose();
     widget.controller.removeListener(_focusWhenLoaded);
     _text.dispose();
     _focus.dispose();
     super.dispose();
   }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) widget.controller.archiveExpired();
+  }
+
   Future<void> _add() async {
-    if (await widget.controller.add(_text.text) && mounted) {
+    final raw = _priority.text.trim();
+    final priority = raw.isEmpty ? null : int.tryParse(raw);
+    if ((raw.isNotEmpty && priority == null) || !Task.validPriority(priority)) {
+      setState(
+        () => _priorityError = 'Use 1–2147483647, or leave priority blank.',
+      );
+      return;
+    }
+    setState(() => _priorityError = null);
+    if (await widget.controller.add(_text.text, priority: priority) &&
+        mounted) {
       _text.clear();
       _focus.requestFocus();
     }
@@ -241,7 +270,9 @@ class _MemoPageState extends State<MemoPage> {
                           final remaining = controller.tasks
                               .where((task) => !task.done)
                               .length;
-                          final tasks = controller.tasks;
+                          final tasks = controller.tasks
+                              .where((t) => !t.archived)
+                              .toList();
                           return Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -319,6 +350,26 @@ class _MemoPageState extends State<MemoPage> {
                                   ),
                                   const SizedBox(width: 8),
                                   SizedBox(
+                                    width: 76,
+                                    child: TextField(
+                                      controller: _priority,
+                                      enabled:
+                                          controller.ready && !controller.busy,
+                                      keyboardType: TextInputType.number,
+                                      inputFormatters: [
+                                        FilteringTextInputFormatter.digitsOnly,
+                                      ],
+                                      maxLength: 10,
+                                      decoration: const InputDecoration(
+                                        labelText: 'Priority',
+                                        hintText: '—',
+                                        counterText: '',
+                                      ),
+                                      onSubmitted: (_) => _add(),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  SizedBox(
                                     height: 56,
                                     child: IconButton.filled(
                                       tooltip: 'Add task',
@@ -331,6 +382,40 @@ class _MemoPageState extends State<MemoPage> {
                                   ),
                                 ],
                               ),
+                              Row(
+                                children: [
+                                  const Expanded(
+                                    child: Text(
+                                      'Blank priority = Unclassified',
+                                      style: TextStyle(fontSize: 12),
+                                    ),
+                                  ),
+                                  TextButton.icon(
+                                    icon: const Icon(
+                                      Icons.archive_outlined,
+                                      size: 18,
+                                    ),
+                                    label: const Text('Archive'),
+                                    onPressed: controller.ready
+                                        ? () => Navigator.push(
+                                            context,
+                                            MaterialPageRoute<void>(
+                                              builder: (_) => ArchivePage(
+                                                controller: controller,
+                                              ),
+                                            ),
+                                          )
+                                        : null,
+                                  ),
+                                ],
+                              ),
+                              if (_priorityError != null)
+                                Text(
+                                  _priorityError!,
+                                  style: TextStyle(
+                                    color: Theme.of(context).colorScheme.error,
+                                  ),
+                                ),
                               if (controller.error != null)
                                 Padding(
                                   padding: const EdgeInsets.only(top: 12),

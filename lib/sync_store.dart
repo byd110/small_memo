@@ -31,6 +31,8 @@ class MemoOperation {
         !{
           'create',
           'placement',
+          'lifecycle',
+          'archive',
           'title',
           'done',
           'delete',
@@ -41,6 +43,24 @@ class MemoOperation {
     }
     // Validate payloads even when their task is no longer present.
     switch (op.kind) {
+      case 'archive':
+        final value = Map<String, dynamic>.from(op.value as Map);
+        Task.fromJson({
+          'id': op.taskId,
+          'title': 'Validate',
+          ...value,
+          'done': true,
+        });
+        if (value['completed_at'] == null || value['archived_at'] == null) {
+          throw const FormatException('Missing archive timestamps');
+        }
+      case 'lifecycle':
+        final value = Map<String, dynamic>.from(op.value as Map);
+        Task.fromJson({'id': op.taskId, 'title': 'Validate', ...value});
+        if (!value.containsKey('completed_at') ||
+            !value.containsKey('archived_at')) {
+          throw const FormatException('Missing lifecycle timestamps');
+        }
       case 'placement':
         final value = Map<String, dynamic>.from(op.value as Map);
         if (!value.containsKey('priority') ||
@@ -106,8 +126,24 @@ List<MemoOperation> changesBetween(List<Task> before, List<Task> after) {
       if (task.title != previous.title) {
         changes.add(MemoOperation.create('title', task.id, task.title));
       }
-      if (task.done != previous.done) {
-        changes.add(MemoOperation.create('done', task.id, task.done));
+      if (task.done != previous.done ||
+          task.completedAt != previous.completedAt ||
+          task.archivedAt != previous.archivedAt) {
+        changes.add(
+          MemoOperation.create(
+            task.done == previous.done &&
+                    task.completedAt == previous.completedAt &&
+                    task.archivedAt != null
+                ? 'archive'
+                : 'lifecycle',
+            task.id,
+            {
+              'done': task.done,
+              'completed_at': task.completedAt?.toUtc().toIso8601String(),
+              'archived_at': task.archivedAt?.toUtc().toIso8601String(),
+            },
+          ),
+        );
       }
     }
     final previousIds =
@@ -130,6 +166,31 @@ List<Task> replay(List<Task> tasks, Iterable<MemoOperation> operations) {
   for (final op in operations) {
     final task = result[op.taskId];
     switch (op.kind) {
+      case 'archive':
+        final value = op.value as Map;
+        if (task != null &&
+            task.done &&
+            task.completedAt ==
+                DateTime.parse(value['completed_at'] as String)) {
+          result[op.taskId] = task.lifecycle(
+            true,
+            task.completedAt,
+            DateTime.parse(value['archived_at'] as String),
+          );
+        }
+      case 'lifecycle':
+        if (task != null) {
+          final value = op.value as Map;
+          result[op.taskId] = task.lifecycle(
+            value['done'] as bool,
+            value['completed_at'] == null
+                ? null
+                : DateTime.parse(value['completed_at'] as String),
+            value['archived_at'] == null
+                ? null
+                : DateTime.parse(value['archived_at'] as String),
+          );
+        }
       case 'placement':
         if (task != null) {
           final value = op.value as Map;

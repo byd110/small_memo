@@ -28,6 +28,8 @@ class Task {
     required this.id,
     required this.title,
     this.done = false,
+    this.completedAt,
+    this.archivedAt,
     this.priority,
     this.position = 0,
     List<Attempt> attempts = const [],
@@ -36,6 +38,9 @@ class Task {
   final String id;
   final String title;
   final bool done;
+  final DateTime? completedAt;
+  final DateTime? archivedAt;
+  bool get archived => archivedAt != null;
   final int? priority;
   final int position;
   static const maxPriority = 2147483647;
@@ -48,6 +53,8 @@ class Task {
     id: id,
     title: title ?? this.title,
     done: done ?? this.done,
+    completedAt: done == false ? null : completedAt,
+    archivedAt: done == false ? null : archivedAt,
     priority: priority,
     position: position,
     attempts: List.unmodifiable(attempts ?? _attempts),
@@ -56,11 +63,25 @@ class Task {
     id: id,
     title: title,
     done: done,
+    completedAt: completedAt,
+    archivedAt: archivedAt,
     attempts: _attempts,
     priority: priority,
     position: position,
   );
-  Task toggled() => copyWith(done: !done);
+  Task lifecycle(bool done, DateTime? completedAt, DateTime? archivedAt) =>
+      Task(
+        id: id,
+        title: title,
+        priority: priority,
+        position: position,
+        attempts: _attempts,
+        done: done,
+        completedAt: done ? completedAt : null,
+        archivedAt: done ? archivedAt : null,
+      );
+  Task toggled() =>
+      lifecycle(!done, done ? null : DateTime.now().toUtc(), null);
 
   /// Calendar dates in the viewer's local timezone; end is exclusive.
   int attemptsBetween(DateTime? start, DateTime? end) => _attempts
@@ -77,6 +98,8 @@ class Task {
     'id': id,
     'title': title,
     'done': done,
+    'completed_at': completedAt?.toUtc().toIso8601String(),
+    'archived_at': archivedAt?.toUtc().toIso8601String(),
     'attempts': _attempts.map((a) => a.toJson()).toList(),
   };
 
@@ -84,6 +107,22 @@ class Task {
     final id = json['id'];
     final title = json['title'];
     final done = json['done'];
+    DateTime? stamp(String key) {
+      final value = json[key];
+      if (value == null) return null;
+      final date = value is String ? DateTime.tryParse(value) : null;
+      if (date == null || !date.isUtc || date.toIso8601String() != value) {
+        throw FormatException('Invalid $key');
+      }
+      return date;
+    }
+
+    final completedAt = stamp('completed_at');
+    final archivedAt = stamp('archived_at');
+    if ((done != true && (completedAt != null || archivedAt != null)) ||
+        (archivedAt != null && completedAt == null)) {
+      throw const FormatException('Invalid task lifecycle');
+    }
     final priority = json['priority'];
     final position = json['position'] ?? 0;
     if (!validPriority(priority) ||
@@ -117,6 +156,8 @@ class Task {
       id: id,
       title: title,
       done: done,
+      completedAt: completedAt,
+      archivedAt: archivedAt,
       priority: priority as int?,
       position: position,
       attempts: List.unmodifiable(attempts),

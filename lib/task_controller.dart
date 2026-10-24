@@ -29,6 +29,7 @@ class TaskController extends ChangeNotifier {
     } finally {
       busy = false;
       notifyListeners();
+      await archiveExpired();
     }
   }
 
@@ -51,6 +52,7 @@ class TaskController extends ChangeNotifier {
     } finally {
       busy = false;
       notifyListeners();
+      await archiveExpired();
     }
   }
 
@@ -67,17 +69,24 @@ class TaskController extends ChangeNotifier {
     } finally {
       busy = false;
       notifyListeners();
+      await archiveExpired();
     }
   }
 
-  Future<bool> add(String title) async {
+  Future<bool> add(String title, {int? priority}) async {
     title = title.trim();
     if (title.isEmpty || title.length > 500) return false;
-    final group = tasks.where((t) => t.priority == null);
+    if (!Task.validPriority(priority)) return false;
+    final group = tasks.where((t) => t.priority == priority);
     final position = group.isEmpty ? 0 : group.last.position + 1;
     return _save([
       ..._tasks,
-      Task(id: const Uuid().v4(), title: title, position: position),
+      Task(
+        id: const Uuid().v4(),
+        title: title,
+        priority: priority,
+        position: position,
+      ),
     ]);
   }
 
@@ -87,7 +96,13 @@ class TaskController extends ChangeNotifier {
     final task = _tasks.where((t) => t.id == id).firstOrNull;
     if (task == null || beforeId == id) return false;
     final group = tasks
-        .where((t) => t.priority == priority && t.id != id)
+        .where(
+          (t) =>
+              t.priority == priority &&
+              t.id != id &&
+              t.done == task.done &&
+              t.archived == task.archived,
+        )
         .toList();
     final index = beforeId == null
         ? group.length
@@ -111,8 +126,49 @@ class TaskController extends ChangeNotifier {
 
   Future<bool> toggle(String id) => _save([
     for (final task in _tasks)
-      if (task.id == id) task.toggled() else task,
+      if (task.id == id)
+        task.lifecycle(!task.done, task.done ? null : _now().toUtc(), null)
+      else
+        task,
   ]);
+
+  /// Old completed tasks have no known completion date: start their grace period now.
+  Future<bool> archiveExpired() async {
+    if (!ready || busy) return false;
+    final now = _now().toUtc();
+    var changed = false;
+    final next = tasks.map((task) {
+      if (!task.done || task.archived) return task;
+      if (task.completedAt == null) {
+        changed = true;
+        return task.lifecycle(true, now, null);
+      }
+      if (!task.completedAt!.add(const Duration(days: 30)).isAfter(now)) {
+        changed = true;
+        return task.lifecycle(true, task.completedAt, now);
+      }
+      return task;
+    }).toList();
+    return !changed || await _save(next);
+  }
+
+  Future<bool> archive(String id) async {
+    final task = tasks.where((t) => t.id == id).firstOrNull;
+    if (task == null || !task.done || task.archived) return false;
+    final now = _now().toUtc();
+    return _update(id, (t) => t.lifecycle(true, t.completedAt ?? now, now));
+  }
+
+  Future<bool> archiveAllFinished() {
+    final now = _now().toUtc();
+    return _save([
+      for (final t in _tasks)
+        if (t.done && !t.archived)
+          t.lifecycle(true, t.completedAt ?? now, now)
+        else
+          t,
+    ]);
+  }
 
   Future<bool> edit(String id, String title) async {
     title = title.trim();
