@@ -30,6 +30,7 @@ class MemoOperation {
         op.taskId.isEmpty ||
         !{
           'create',
+          'placement',
           'title',
           'done',
           'delete',
@@ -40,6 +41,15 @@ class MemoOperation {
     }
     // Validate payloads even when their task is no longer present.
     switch (op.kind) {
+      case 'placement':
+        final value = Map<String, dynamic>.from(op.value as Map);
+        if (!value.containsKey('priority') ||
+            !Task.validPriority(value['priority']) ||
+            value['position'] is! int ||
+            (value['position'] as int) < 0 ||
+            (value['position'] as int) > 2147483647) {
+          throw const FormatException('Invalid placement change');
+        }
       case 'create':
         Task.fromJson(Map<String, dynamic>.from(op.value as Map));
       case 'title':
@@ -84,6 +94,15 @@ List<MemoOperation> changesBetween(List<Task> before, List<Task> after) {
         ),
       );
     } else {
+      if (task.priority != previous.priority ||
+          task.position != previous.position) {
+        changes.add(
+          MemoOperation.create('placement', task.id, {
+            'priority': task.priority,
+            'position': task.position,
+          }),
+        );
+      }
       if (task.title != previous.title) {
         changes.add(MemoOperation.create('title', task.id, task.title));
       }
@@ -111,6 +130,14 @@ List<Task> replay(List<Task> tasks, Iterable<MemoOperation> operations) {
   for (final op in operations) {
     final task = result[op.taskId];
     switch (op.kind) {
+      case 'placement':
+        if (task != null) {
+          final value = op.value as Map;
+          result[op.taskId] = task.placed(
+            value['priority'] as int?,
+            value['position'] as int,
+          );
+        }
       case 'create':
         result.putIfAbsent(
           op.taskId,
@@ -178,7 +205,7 @@ class SyncTaskStore extends FileTaskStore {
           throw const FormatException('Duplicate pending change');
         }
         imported = syncState!['imported'] as bool;
-      } else if (_tasks.isNotEmpty) {
+      } else if (await file.exists()) {
         throw const FormatException('Missing account sync state');
       }
       return _tasks;

@@ -1,7 +1,7 @@
 name: small_memo
 description: A small todo list with optional personal sync for iOS, Android, Windows, and Linux.
 publish_to: none
-version: 0.3.0+4
+version: 0.4.0+5
 
 environment:
   sdk: ^3.10.0

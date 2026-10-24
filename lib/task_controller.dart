@@ -16,7 +16,7 @@ class TaskController extends ChangeNotifier {
   bool busy = false;
   String? error;
 
-  List<Task> get tasks => List.unmodifiable(_tasks);
+  List<Task> get tasks => List.unmodifiable(orderedTasks(_tasks));
 
   /// Network requests run outside this guard; only their local commit holds it.
   Future<bool> applyExternal(Future<List<Task>> Function() change) async {
@@ -73,7 +73,40 @@ class TaskController extends ChangeNotifier {
   Future<bool> add(String title) async {
     title = title.trim();
     if (title.isEmpty || title.length > 500) return false;
-    return _save([..._tasks, Task(id: const Uuid().v4(), title: title)]);
+    final group = tasks.where((t) => t.priority == null);
+    final position = group.isEmpty ? 0 : group.last.position + 1;
+    return _save([
+      ..._tasks,
+      Task(id: const Uuid().v4(), title: title, position: position),
+    ]);
+  }
+
+  /// Move before a destination task, or append when beforeId is absent.
+  Future<bool> move(String id, int? priority, {String? beforeId}) async {
+    if (!ready || busy || !Task.validPriority(priority)) return false;
+    final task = _tasks.where((t) => t.id == id).firstOrNull;
+    if (task == null || beforeId == id) return false;
+    final group = tasks
+        .where((t) => t.priority == priority && t.id != id)
+        .toList();
+    final index = beforeId == null
+        ? group.length
+        : group.indexWhere((t) => t.id == beforeId);
+    if (index < 0) return false; // Destination changed while dragging.
+    group.insert(index, task.placed(priority, 0));
+    final replacements = {
+      for (var i = 0; i < group.length; i++)
+        group[i].id: group[i].placed(priority, i),
+    };
+    return _save([for (final t in _tasks) replacements[t.id] ?? t]);
+  }
+
+  Future<bool> setPriority(String id, int? priority) async {
+    if (!ready || busy) return false;
+    final task = _tasks.where((t) => t.id == id).firstOrNull;
+    if (task == null || !Task.validPriority(priority)) return false;
+    if (task.priority == priority) return true;
+    return move(id, priority);
   }
 
   Future<bool> toggle(String id) => _save([

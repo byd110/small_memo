@@ -35,7 +35,7 @@ class SupabaseMemoRemote implements MemoRemote {
     }
     final data = await client
         .rpc(
-          'memo_sync',
+          'memo_sync_v2',
           params: {'operations': operations.map((o) => o.toJson()).toList()},
         )
         // Pin credentials to this batch, even if the user switches accounts
@@ -206,7 +206,7 @@ class SyncService extends ChangeNotifier with WidgetsBindingObserver {
     } on PostgrestException catch (e) {
       if (generation != _generation || _disposed) return;
       error = e.code == 'PGRST202' || e.code == '42P01'
-          ? 'Database setup is needed. Run the Small Memo SQL migration in Supabase, then tap Sync now.'
+          ? 'Database setup is needed. Run the Small Memo priority/order migration (202610240001) in Supabase after the initial sync migration, then tap Sync now.'
           : 'Sync was rejected. Check your account and database setup, then retry. Local changes are safe.';
     } on AuthException catch (_) {
       if (generation != _generation || _disposed) return;

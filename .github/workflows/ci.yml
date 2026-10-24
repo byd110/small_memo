@@ -43,6 +43,8 @@ jobs:
       - run: psql -v ON_ERROR_STOP=1 -f supabase/tests/bootstrap.sql
       - run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/202610070001_personal_sync.sql
       - run: psql -v ON_ERROR_STOP=1 -f supabase/tests/sync.sql
+      - run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/202610240001_priority_order.sql
+      - run: psql -v ON_ERROR_STOP=1 -f supabase/tests/priority.sql
 
   native:
     needs: [check, database]

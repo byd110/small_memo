@@ -10,7 +10,15 @@ Open your [Supabase project](https://supabase.com/dashboard/project/gptkxhsequdq
 and choose **SQL Editor → New query**. Paste the entire contents of
 [`202610070001_personal_sync.sql`](../supabase/migrations/202610070001_personal_sync.sql)
 and click **Run** once. The transaction creates three tables and a `memo_sync`
-function. Do not run `supabase/tests` files in your project: those create mock
+function. Then run
+[`202610240001_priority_order.sql`](../supabase/migrations/202610240001_priority_order.sql)
+to add priorities, task ordering, and the `memo_sync_v2` endpoint used by 0.4.
+**Existing projects that already ran the first migration need only the new migration.**
+Apply each migration once. Until the upgrade is installed, 0.4 retains pending
+changes locally and reports that database setup is needed; it does not silently
+discard priority data. No live database changes are made by installing the app.
+
+Do not run `supabase/tests` files in your project: those create mock
 Auth objects for an isolated test database only.
 
 The migration enables row-level security. Only signed-in users can call the sync
@@ -63,6 +71,16 @@ old work, normal account switching never imports anything automatically.
   service when the app is closed or suspended by the OS.
 - Attempts from multiple devices combine using unique IDs. Retry requests cannot
   duplicate attempts, and removing an attempt is propagated to other devices.
+- Unclassified tasks appear first, followed by numbered priority groups (1 is
+  highest). Dragging into a group changes priority; dragging within it changes
+  order. Unclassified remains available as a drop destination even when empty.
+  Set priority accepts whole numbers from 1 through 2,147,483,647. Empty numbered
+  groups disappear; new tasks start Unclassified. Checking a task keeps its order.
+- Priority and position sync together for each changed task. Simultaneous offline
+  reorders use the last placement received for each task; equal positions use task
+  IDs to ensure all devices show the same order. Independent title and attempt
+  edits remain intact. Update every device to 0.4 to view and change priorities;
+  0.3 clients can still edit existing fields without erasing server priorities.
 - Description and completion edits are independent. If two devices edit the same
   field while offline, the last change **received by the server** wins. Device
   clocks do not determine the winner.
@@ -86,8 +104,8 @@ The project owner's database password is stored only in `.env.supabase.local`,
 ignored by Git and restricted to its local owner. It is for administration, not
 app authentication. Flutter does not load or bundle that file.
 
-The local-only list remains `tasks.json` (version 2). Account files are
-`account-<user-id>.json` (version 3), containing the task cache and durable upload
+The local-only list remains `tasks.json`. Account files are
+`account-<user-id>.json`. Both use version 4 in app 0.4, containing the task cache and durable upload
 queue in one atomic write. Keep a backup with the app closed before changing or
 reinstalling it. An older version of Small Memo cannot display account files.
 

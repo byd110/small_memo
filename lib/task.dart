@@ -28,12 +28,19 @@ class Task {
     required this.id,
     required this.title,
     this.done = false,
+    this.priority,
+    this.position = 0,
     List<Attempt> attempts = const [],
   }) : _attempts = attempts;
 
   final String id;
   final String title;
   final bool done;
+  final int? priority;
+  final int position;
+  static const maxPriority = 2147483647;
+  static bool validPriority(Object? value) =>
+      value == null || (value is int && value >= 1 && value <= maxPriority);
   final List<Attempt> _attempts;
   List<Attempt> get attempts => List.unmodifiable(_attempts);
 
@@ -41,7 +48,17 @@ class Task {
     id: id,
     title: title ?? this.title,
     done: done ?? this.done,
+    priority: priority,
+    position: position,
     attempts: List.unmodifiable(attempts ?? _attempts),
+  );
+  Task placed(int? priority, int position) => Task(
+    id: id,
+    title: title,
+    done: done,
+    attempts: _attempts,
+    priority: priority,
+    position: position,
   );
   Task toggled() => copyWith(done: !done);
 
@@ -54,7 +71,9 @@ class Task {
       )
       .length;
 
-  Map<String, Object> toJson() => {
+  Map<String, Object?> toJson() => {
+    'priority': priority,
+    'position': position,
     'id': id,
     'title': title,
     'done': done,
@@ -65,6 +84,14 @@ class Task {
     final id = json['id'];
     final title = json['title'];
     final done = json['done'];
+    final priority = json['priority'];
+    final position = json['position'] ?? 0;
+    if (!validPriority(priority) ||
+        position is! int ||
+        position < 0 ||
+        position > 2147483647) {
+      throw const FormatException('Invalid task placement');
+    }
     if (id is! String ||
         id.isEmpty ||
         title is! String ||
@@ -90,7 +117,20 @@ class Task {
       id: id,
       title: title,
       done: done,
+      priority: priority as int?,
+      position: position,
       attempts: List.unmodifiable(attempts),
     );
   }
 }
+
+String priorityLabel(int? priority) =>
+    priority == null ? 'Unclassified' : 'Priority $priority';
+
+List<Task> orderedTasks(Iterable<Task> tasks) => tasks.toList()
+  ..sort((a, b) {
+    final group = (a.priority ?? 0).compareTo(b.priority ?? 0);
+    if (group != 0) return group;
+    final order = a.position.compareTo(b.position);
+    return order != 0 ? order : a.id.compareTo(b.id);
+  });

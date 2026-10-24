@@ -40,12 +40,12 @@ class FileTaskStore implements TaskStore {
       if (await file.exists()) {
         final data = jsonDecode(await file.readAsString());
         if (data is! Map<String, dynamic> ||
-            ![1, 2, 3].contains(data['version']) ||
+            ![1, 2, 3, 4].contains(data['version']) ||
             data['tasks'] is! List) {
           throw const FormatException('Unrecognized task file');
         }
         _version = data['version'] as int;
-        if (_version == 3) {
+        if (_version == 3 || data.containsKey('sync')) {
           if (data['sync'] is! Map<String, dynamic>) {
             throw const FormatException('Missing sync state');
           }
@@ -59,7 +59,15 @@ class FileTaskStore implements TaskStore {
           if (_version >= 2 && item['attempts'] is! List) {
             throw const FormatException('Missing attempt history');
           }
-          final task = Task.fromJson(item);
+          if (_version == 4 &&
+              (!item.containsKey('priority') || item['position'] is! int)) {
+            throw const FormatException('Missing task placement');
+          }
+          final task = Task.fromJson({
+            ...item,
+            if (_version < 4 && !item.containsKey('position'))
+              'position': tasks.length,
+          });
           if (!ids.add(task.id)) {
             throw const FormatException('Duplicate task ID');
           }
@@ -79,21 +87,21 @@ class FileTaskStore implements TaskStore {
 
   Future<void> saveState(List<Task> tasks, Map<String, dynamic>? state) async {
     if (!_loaded || _lock == null) throw StateError('Store is not loaded');
-    if (_version == 1) {
-      final backup = File('${file.path}.v1.bak');
+    if (_version < 4 && await file.exists()) {
+      final backup = File('${file.path}.v$_version.bak');
       if (!await backup.exists()) await file.copy(backup.path);
     }
     final temporary = File('${file.path}.tmp');
     await temporary.writeAsString(
       jsonEncode({
-        'version': state == null ? 2 : 3,
+        'version': 4,
         'tasks': tasks.map((task) => task.toJson()).toList(),
         'sync': ?state,
       }),
       flush: true,
     );
     await temporary.rename(file.path);
-    _version = state == null ? 2 : 3;
+    _version = 4;
     syncState = state;
   }
 

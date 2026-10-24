@@ -15,6 +15,7 @@ import 'sync_service.dart';
 
 import 'task_controller.dart';
 import 'task_views.dart';
+import 'priority_views.dart';
 import 'task_store.dart';
 
 Future<void> main() async {
@@ -240,10 +241,7 @@ class _MemoPageState extends State<MemoPage> {
                           final remaining = controller.tasks
                               .where((task) => !task.done)
                               .length;
-                          final tasks = [
-                            ...controller.tasks.where((task) => !task.done),
-                            ...controller.tasks.where((task) => task.done),
-                          ];
+                          final tasks = controller.tasks;
                           return Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -390,19 +388,7 @@ class _MemoPageState extends State<MemoPage> {
                                           ),
                                         ),
                                       )
-                                    : ListView.separated(
-                                        itemCount: tasks.length,
-                                        separatorBuilder: (_, _) =>
-                                            const Divider(height: 1),
-                                        itemBuilder: (context, index) {
-                                          final task = tasks[index];
-                                          return TaskTile(
-                                            key: ValueKey(task.id),
-                                            task: task,
-                                            controller: controller,
-                                          );
-                                        },
-                                      ),
+                                    : PriorityTaskList(controller: controller),
                               ),
                               const SizedBox(height: 12),
                               Text(

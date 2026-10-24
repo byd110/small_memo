@@ -15,3 +15,6 @@ See docs/supabase-setup.md for the database migration and setup steps.
 Repository: https://github.com/byd110/small_memo
 
 See README.md for setup, shortcuts, platform limitations, and sync setup.
+
+Version 0.4 adds numeric priority groups (Unclassified first), drag ordering and
+cross-group moves, with local version-4 storage and a versioned sync upgrade.

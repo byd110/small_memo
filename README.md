@@ -12,7 +12,10 @@ Create a task, check it off, and get back to what you were doing.
 - Edit a description from the task's menu without losing its attempts or completion state.
 - Remove an accidental attempt from its history, with confirmation.
 - View attempt summaries for Today, Last 7 days, Last 30 days, All time, or custom dates.
-- Check and uncheck tasks independently of attempts. Completed tasks move below unfinished tasks.
+- Group tasks by numeric priority: Unclassified first, then Priority 1, 2, and so on.
+- Drag the handle to reorder tasks or move them into another priority group.
+- Use Set priority to create any numbered group; Move up/down also works without dragging.
+- Check and uncheck tasks independently of attempts. Completed tasks keep their chosen position.
 - Delete a task with confirmation.
 - Save locally first; optionally sign in to sync tasks and attempts across your own devices.
 - No reminders. Email/password accounts and sync use Supabase; local-only use remains available.
@@ -103,23 +106,25 @@ through `path_provider`. Tasks are plain text JSON, not encrypted. Local-only da
 you sign in and set up the database. Uninstalling can remove unsynced local changes. Back up this file with the
 app closed if you need to preserve it.
 
-Version 0.2 reads existing version-1 task files as tasks with no attempts. On the
-first save it preserves the original file as `tasks.json.v1.bak` and writes the
-new version-2 format. Older app versions cannot read the new format: keep using
-0.2 or newer once you start recording attempts. The legacy backup does not contain
-any attempts recorded after upgrading.
+Version 0.4 reads existing version-1/2/3 files, defaults old tasks to Unclassified,
+and preserves their stored list order. On the first save it keeps the original
+file as `tasks.json.vN.bak` (or `account-<id>.json.vN.bak`) and writes version 4,
+which includes priority and position. Keep using 0.4 or newer after upgrading;
+older app versions cannot open these new local files. The backup contains only
+data saved before the upgrade.
 
 Each save flushes a temporary file before replacing the previous file. A process
 lock prevents simultaneous app instances from writing over each other. If the
 file is unreadable, the app preserves it and displays an error instead of
 silently resetting your list. Changes that fail to save do not appear completed.
-Account caches and pending changes are saved together in version-3
+Account caches and pending changes are saved together in version-4
 `account-<user-id>.json` files. Sessions use the OS credential store.
 
 ## Personal device sync
 
 Follow the [Supabase setup guide](docs/supabase-setup.md) to run the SQL migration,
-create your app account, and import existing local tasks. The supplied project URL
+create your app account, and import existing local tasks. Existing Supabase projects
+must also apply the **202610240001 priority/order migration** before 0.4 can sync. The supplied project URL
 and publishable key are configured in the app; the database password is never
 included. Sign into the same account on each device. Other accounts have separate
 lists; inviting other users is not supported.

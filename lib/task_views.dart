@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'task.dart';
 import 'task_controller.dart';
+import 'priority_dialog.dart';
 
 String attemptLabel(int count) =>
     '$count ${count == 1 ? 'attempt' : 'attempts'}';
@@ -12,7 +13,13 @@ String stampLabel(BuildContext context, DateTime stamp) {
 }
 
 class TaskTile extends StatelessWidget {
-  const TaskTile({super.key, required this.task, required this.controller});
+  const TaskTile({
+    super.key,
+    required this.task,
+    required this.controller,
+    this.dragHandle,
+  });
+  final Widget? dragHandle;
   final Task task;
   final TaskController controller;
 
@@ -24,6 +31,7 @@ class TaskTile extends StatelessWidget {
       children: [
         Row(
           children: [
+            ?dragHandle,
             Checkbox(
               value: task.done,
               semanticLabel: task.title,
@@ -51,6 +59,34 @@ class TaskTile extends StatelessWidget {
                     builder: (_) =>
                         EditTaskDialog(task: task, controller: controller),
                   );
+                } else if (value == 'priority') {
+                  await showDialog<void>(
+                    context: context,
+                    builder: (_) =>
+                        PriorityDialog(task: task, controller: controller),
+                  );
+                } else if (value == 'up' || value == 'down') {
+                  final group = controller.tasks
+                      .where((t) => t.priority == task.priority)
+                      .toList();
+                  final index = group.indexWhere((t) => t.id == task.id);
+                  if (value == 'up' && index > 0) {
+                    await controller.move(
+                      task.id,
+                      task.priority,
+                      beforeId: group[index - 1].id,
+                    );
+                  } else if (value == 'down' &&
+                      index >= 0 &&
+                      index < group.length - 1) {
+                    await controller.move(
+                      task.id,
+                      task.priority,
+                      beforeId: index + 2 < group.length
+                          ? group[index + 2].id
+                          : null,
+                    );
+                  }
                 } else {
                   final confirmed = await showDialog<bool>(
                     context: context,
@@ -76,6 +112,9 @@ class TaskTile extends StatelessWidget {
               },
               itemBuilder: (_) => const [
                 PopupMenuItem(value: 'edit', child: Text('Edit description')),
+                PopupMenuItem(value: 'priority', child: Text('Set priority')),
+                PopupMenuItem(value: 'up', child: Text('Move up')),
+                PopupMenuItem(value: 'down', child: Text('Move down')),
                 PopupMenuItem(value: 'delete', child: Text('Delete task')),
               ],
             ),
