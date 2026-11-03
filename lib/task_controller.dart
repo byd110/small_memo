@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 
 import 'task.dart';
+import 'deadline.dart';
 import 'task_store.dart';
 
 class TaskController extends ChangeNotifier {
@@ -73,7 +74,7 @@ class TaskController extends ChangeNotifier {
     }
   }
 
-  Future<bool> add(String title, {int? priority}) async {
+  Future<bool> add(String title, {int? priority, Deadline? deadline}) async {
     title = title.trim();
     if (title.isEmpty || title.length > 500) return false;
     if (!Task.validPriority(priority)) return false;
@@ -85,6 +86,7 @@ class TaskController extends ChangeNotifier {
         id: const Uuid().v4(),
         title: title,
         priority: priority,
+        deadline: deadline,
         position: position,
       ),
     ]);
@@ -169,6 +171,9 @@ class TaskController extends ChangeNotifier {
           t,
     ]);
   }
+
+  Future<bool> setDeadline(String id, Deadline? deadline) =>
+      _update(id, (task) => task.withDeadline(deadline));
 
   Future<bool> edit(String id, String title) async {
     title = title.trim();

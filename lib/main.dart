@@ -16,6 +16,8 @@ import 'sync_service.dart';
 
 import 'task_controller.dart';
 import 'task.dart';
+import 'deadline.dart';
+import 'deadline_views.dart';
 import 'archive_page.dart';
 import 'task_views.dart';
 import 'priority_views.dart';
@@ -174,6 +176,7 @@ class MemoPage extends StatefulWidget {
 }
 
 class _MemoPageState extends State<MemoPage> with WidgetsBindingObserver {
+  Deadline? _deadline;
   final _priority = TextEditingController();
   String? _priorityError;
   Timer? _archiveTimer;
@@ -185,10 +188,10 @@ class _MemoPageState extends State<MemoPage> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _archiveTimer = Timer.periodic(
-      const Duration(minutes: 1),
-      (_) => widget.controller.archiveExpired(),
-    );
+    _archiveTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+      widget.controller.archiveExpired();
+      if (mounted) setState(() {});
+    });
     widget.controller.addListener(_focusWhenLoaded);
     _focusWhenLoaded();
   }
@@ -215,7 +218,10 @@ class _MemoPageState extends State<MemoPage> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) widget.controller.archiveExpired();
+    if (state == AppLifecycleState.resumed) {
+      widget.controller.archiveExpired();
+      setState(() {});
+    }
   }
 
   Future<void> _add() async {
@@ -228,12 +234,29 @@ class _MemoPageState extends State<MemoPage> with WidgetsBindingObserver {
       return;
     }
     setState(() => _priorityError = null);
-    if (await widget.controller.add(_text.text, priority: priority) &&
+    if (await widget.controller.add(
+          _text.text,
+          priority: priority,
+          deadline: _deadline,
+        ) &&
         mounted) {
       _text.clear();
+      setState(() => _deadline = null);
       _focus.requestFocus();
     }
   }
+
+  Future<void> _pickDeadline() => showDialog<void>(
+    context: context,
+    builder: (_) => DeadlineDialog(
+      initial: _deadline,
+      onSave: (value) async {
+        if (!mounted) return false;
+        setState(() => _deadline = value);
+        return true;
+      },
+    ),
+  );
 
   @override
   Widget build(BuildContext context) => CallbackShortcuts(
@@ -408,6 +431,21 @@ class _MemoPageState extends State<MemoPage> with WidgetsBindingObserver {
                                         : null,
                                   ),
                                 ],
+                              ),
+                              TextButton.icon(
+                                onPressed: controller.ready && !controller.busy
+                                    ? _pickDeadline
+                                    : null,
+                                icon: const Icon(
+                                  Icons.event_outlined,
+                                  size: 18,
+                                ),
+                                label: Text(
+                                  _deadline == null
+                                      ? 'Add deadline (optional)'
+                                      : deadlineDateLabel(context, _deadline!),
+                                  textAlign: TextAlign.start,
+                                ),
                               ),
                               if (_priorityError != null)
                                 Text(

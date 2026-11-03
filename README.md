@@ -18,6 +18,7 @@ Create a task, check it off, and get back to what you were doing.
 - Finished tasks move to a group at the bottom, retaining their priority for reopening.
 - Archive one finished task or all finished tasks immediately; automatic archiving hides tasks 30 days after completion.
 - Open Archive to see saved history or uncheck a task to reopen it. Archived tasks remain in attempt summaries.
+- Add optional date/time deadlines at creation or from a task’s menu. Eastern Time (Toronto/New York, EST/EDT) is the default.
 - Check and uncheck tasks independently of attempts. Completed tasks keep their chosen position.
 - Delete a task with confirmation.
 - Save locally first; optionally sign in to sync tasks and attempts across your own devices.
@@ -109,6 +110,27 @@ calendar month. Previously finished tasks without dates receive a full 30-day gr
 period on upgrade. Reopening clears completion/archive dates; completing again
 starts a new period. Archiving never deletes descriptions or attempts.
 
+## Deadlines
+
+Use **Add deadline (optional)** when creating a task, or **Set deadline / Change
+deadline** in its menu. Choose Today, Tomorrow, or a calendar date, then a time.
+The picker starts at 17:00 and shows the time before saving. Each new task starts
+without a deadline. **Remove deadline** clears it without affecting attempts.
+
+Eastern Time (Toronto/New York) is the default and follows daylight saving.
+Fixed EST (UTC−5 year-round) and UTC are also available. The selected date and time
+are interpreted in the selected zone, independently of your computer's zone.
+Changing the zone in the picker keeps the entered clock time and changes the
+corresponding instant. The saved instant and selected zone sync together; all
+devices display the deadline in that zone, including EST/EDT beside the time.
+During spring's clock change a skipped time cannot be saved. During autumn's
+repeated hour, choose the EDT or EST occurrence explicitly.
+
+Active tasks show Due today, Due tomorrow, or Overdue with the exact date/time.
+Labels refresh on resume and once per minute while running. Finished and archived
+tasks retain the deadline but never show overdue warnings. Deadlines do not send
+reminders, reorder tasks, or change completion/archiving behavior.
+
 ## Storage
 
 `tasks.json` is saved in the platform's application support directory, obtained
@@ -116,10 +138,10 @@ through `path_provider`. Tasks are plain text JSON, not encrypted. Local-only da
 you sign in and set up the database. Uninstalling can remove unsynced local changes. Back up this file with the
 app closed if you need to preserve it.
 
-Version 0.5 reads existing version-1/2/3/4 files, defaults old tasks to Unclassified,
-and preserves their stored list order. On the first save it keeps the original
-file as `tasks.json.vN.bak` (or `account-<id>.json.vN.bak`) and writes version 5,
-which includes priority, position, completion and archive timestamps. Keep using 0.5 or newer after upgrading;
+Version 0.6 reads existing version-1/2/3/4/5 files, preserving their priorities,
+order, history, and archive state. Tasks without a deadline remain undated. On the first save it keeps the original
+file as `tasks.json.vN.bak` (or `account-<id>.json.vN.bak`) and writes version 6,
+which includes priority, position, completion/archive timestamps, and optional deadlines. Keep using 0.6 or newer after upgrading;
 older app versions cannot open these new local files. The backup contains only
 data saved before the upgrade.
 
@@ -127,7 +149,7 @@ Each save flushes a temporary file before replacing the previous file. A process
 lock prevents simultaneous app instances from writing over each other. If the
 file is unreadable, the app preserves it and displays an error instead of
 silently resetting your list. Changes that fail to save do not appear completed.
-Account caches and pending changes are saved together in version-5
+Account caches and pending changes are saved together in version-6
 `account-<user-id>.json` files. Sessions use the OS credential store.
 
 ## Personal device sync
@@ -135,7 +157,8 @@ Account caches and pending changes are saved together in version-5
 Follow the [Supabase setup guide](docs/supabase-setup.md) to run the SQL migration,
 create your app account, and import existing local tasks. Existing Supabase projects
 must apply the **202610240001 priority/order migration** followed by the
-**202610240002 finished/archive migration** before 0.5 can sync. The supplied project URL
+**202610240002 finished/archive migration**, then the
+**202611030001 deadlines migration** before 0.6 can sync. The supplied project URL
 and publishable key are configured in the app; the database password is never
 included. Sign into the same account on each device. Other accounts have separate
 lists; inviting other users is not supported.

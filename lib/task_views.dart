@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'task.dart';
 import 'task_controller.dart';
 import 'priority_dialog.dart';
+import 'deadline_views.dart';
 
 String attemptLabel(int count) =>
     '$count ${count == 1 ? 'attempt' : 'attempts'}';
@@ -59,6 +60,16 @@ class TaskTile extends StatelessWidget {
                     builder: (_) =>
                         EditTaskDialog(task: task, controller: controller),
                   );
+                } else if (value == 'deadline') {
+                  await showDialog<void>(
+                    context: context,
+                    builder: (_) => DeadlineDialog(
+                      initial: task.deadline,
+                      onSave: (value) => controller.setDeadline(task.id, value),
+                    ),
+                  );
+                } else if (value == 'remove_deadline') {
+                  await controller.setDeadline(task.id, null);
                 } else if (value == 'archive') {
                   await controller.archive(task.id);
                 } else if (value == 'priority') {
@@ -120,6 +131,17 @@ class TaskTile extends StatelessWidget {
               itemBuilder: (_) => [
                 PopupMenuItem(value: 'edit', child: Text('Edit description')),
                 PopupMenuItem(value: 'priority', child: Text('Set priority')),
+                PopupMenuItem(
+                  value: 'deadline',
+                  child: Text(
+                    task.deadline == null ? 'Set deadline' : 'Change deadline',
+                  ),
+                ),
+                if (task.deadline != null)
+                  const PopupMenuItem(
+                    value: 'remove_deadline',
+                    child: Text('Remove deadline'),
+                  ),
                 if (!task.done)
                   const PopupMenuItem(value: 'up', child: Text('Move up')),
                 if (!task.done)
@@ -134,6 +156,11 @@ class TaskTile extends StatelessWidget {
             ),
           ],
         ),
+        if (task.deadline != null)
+          Padding(
+            padding: const EdgeInsets.only(left: 12, bottom: 6),
+            child: DeadlineLabel(deadline: task.deadline!, done: task.done),
+          ),
         Padding(
           padding: const EdgeInsets.only(left: 12),
           child: Wrap(

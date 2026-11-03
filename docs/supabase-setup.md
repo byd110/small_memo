@@ -15,10 +15,12 @@ function. Then run
 to add priorities, task ordering, and the `memo_sync_v2` endpoint used by 0.4.
 Then run [`202610240002_finished_archive.sql`](../supabase/migrations/202610240002_finished_archive.sql)
 for completion dates, archiving, and the `memo_sync_v3` endpoint used by 0.5.
-**If both earlier migrations were already applied, run only the finished/archive migration.**
-Apply each migration once, in that order. Until the upgrade is installed, 0.5 retains pending
+Finally run [`202611030001_deadlines.sql`](../supabase/migrations/202611030001_deadlines.sql)
+for deadlines and the `memo_sync_v4` endpoint used by 0.6.
+**If all three earlier migrations were already applied, run only the deadlines migration.**
+Apply each migration once, in that order. Until the upgrade is installed, 0.6 retains pending
 changes locally and reports that database setup is needed; it does not silently
-discard priority or archive data. No live database changes are made by installing the app.
+discard priority, archive, or deadline data. No live database changes are made by installing the app.
 
 Do not run `supabase/tests` files in your project: those create mock
 Auth objects for an isolated test database only.
@@ -89,8 +91,14 @@ old work, normal account switching never imports anything automatically.
 - Priority and position sync together for each changed task. Simultaneous offline
   reorders use the last placement received for each task; equal positions use task
   IDs to ensure all devices show the same order. Independent title and attempt
-  edits remain intact. Update every device to 0.5 for the same grouping and archive behavior;
-  older clients do not hide archived tasks.
+  edits remain intact. Update every device to 0.6 for the same grouping, archive, and deadline behavior;
+  older clients do not hide archived tasks or display deadlines.
+- Deadlines are optional and sync as one instant plus a selected time zone. Eastern
+  Time (Toronto/New York, EST/EDT) is the default; fixed EST and UTC are optional.
+  Setting/removing a deadline does not overwrite title, priority, attempts or completion.
+  Conflicting deadline edits use the last change received by the server; retries
+  cannot restore a subsequently removed deadline. Previous sync endpoints remain
+  available and older clients' edits to other fields preserve deadlines.
 - Description and completion edits are independent. If two devices edit the same
   field while offline, the last change **received by the server** wins. Device
   clocks do not determine the winner.
@@ -115,7 +123,7 @@ ignored by Git and restricted to its local owner. It is for administration, not
 app authentication. Flutter does not load or bundle that file.
 
 The local-only list remains `tasks.json`. Account files are
-`account-<user-id>.json`. Both use version 5 in app 0.5, containing the task cache and durable upload
+`account-<user-id>.json`. Both use version 6 in app 0.6, containing the task cache and durable upload
 queue in one atomic write. Keep a backup with the app closed before changing or
 reinstalling it. An older version of Small Memo cannot display account files.
 

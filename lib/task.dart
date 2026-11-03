@@ -1,3 +1,5 @@
+import 'deadline.dart';
+
 class Attempt {
   const Attempt({required this.id, required this.at});
   final String id;
@@ -31,6 +33,7 @@ class Task {
     this.completedAt,
     this.archivedAt,
     this.priority,
+    this.deadline,
     this.position = 0,
     List<Attempt> attempts = const [],
   }) : _attempts = attempts;
@@ -42,6 +45,7 @@ class Task {
   final DateTime? archivedAt;
   bool get archived => archivedAt != null;
   final int? priority;
+  final Deadline? deadline;
   final int position;
   static const maxPriority = 2147483647;
   static bool validPriority(Object? value) =>
@@ -56,6 +60,7 @@ class Task {
     completedAt: done == false ? null : completedAt,
     archivedAt: done == false ? null : archivedAt,
     priority: priority,
+    deadline: deadline,
     position: position,
     attempts: List.unmodifiable(attempts ?? _attempts),
   );
@@ -67,6 +72,7 @@ class Task {
     archivedAt: archivedAt,
     attempts: _attempts,
     priority: priority,
+    deadline: deadline,
     position: position,
   );
   Task lifecycle(bool done, DateTime? completedAt, DateTime? archivedAt) =>
@@ -74,12 +80,24 @@ class Task {
         id: id,
         title: title,
         priority: priority,
+        deadline: deadline,
         position: position,
         attempts: _attempts,
         done: done,
         completedAt: done ? completedAt : null,
         archivedAt: done ? archivedAt : null,
       );
+  Task withDeadline(Deadline? value) => Task(
+    id: id,
+    title: title,
+    done: done,
+    completedAt: completedAt,
+    archivedAt: archivedAt,
+    priority: priority,
+    position: position,
+    deadline: value,
+    attempts: _attempts,
+  );
   Task toggled() =>
       lifecycle(!done, done ? null : DateTime.now().toUtc(), null);
 
@@ -94,6 +112,7 @@ class Task {
 
   Map<String, Object?> toJson() => {
     'priority': priority,
+    'deadline': deadline?.toJson(),
     'position': position,
     'id': id,
     'title': title,
@@ -159,6 +178,7 @@ class Task {
       completedAt: completedAt,
       archivedAt: archivedAt,
       priority: priority as int?,
+      deadline: Deadline.fromJson(json['deadline']),
       position: position,
       attempts: List.unmodifiable(attempts),
     );

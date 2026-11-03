@@ -1,6 +1,7 @@
 import 'package:uuid/uuid.dart';
 
 import 'task.dart';
+import 'deadline.dart';
 import 'task_store.dart';
 
 /// A field-level command with a stable ID, safe to retry after a lost response.
@@ -31,6 +32,7 @@ class MemoOperation {
         !{
           'create',
           'placement',
+          'deadline',
           'lifecycle',
           'archive',
           'title',
@@ -43,6 +45,8 @@ class MemoOperation {
     }
     // Validate payloads even when their task is no longer present.
     switch (op.kind) {
+      case 'deadline':
+        Deadline.fromJson(op.value);
       case 'archive':
         final value = Map<String, dynamic>.from(op.value as Map);
         Task.fromJson({
@@ -114,6 +118,11 @@ List<MemoOperation> changesBetween(List<Task> before, List<Task> after) {
         ),
       );
     } else {
+      if (task.deadline != previous.deadline) {
+        changes.add(
+          MemoOperation.create('deadline', task.id, task.deadline?.toJson()),
+        );
+      }
       if (task.priority != previous.priority ||
           task.position != previous.position) {
         changes.add(
@@ -166,6 +175,10 @@ List<Task> replay(List<Task> tasks, Iterable<MemoOperation> operations) {
   for (final op in operations) {
     final task = result[op.taskId];
     switch (op.kind) {
+      case 'deadline':
+        if (task != null) {
+          result[op.taskId] = task.withDeadline(Deadline.fromJson(op.value));
+        }
       case 'archive':
         final value = op.value as Map;
         if (task != null &&

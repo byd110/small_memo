@@ -35,7 +35,7 @@ class SupabaseMemoRemote implements MemoRemote {
     }
     final data = await client
         .rpc(
-          'memo_sync_v3',
+          'memo_sync_v4',
           params: {'operations': operations.map((o) => o.toJson()).toList()},
         )
         // Pin credentials to this batch, even if the user switches accounts
@@ -50,6 +50,13 @@ class SupabaseMemoRemote implements MemoRemote {
             json[key] as String,
           ).toUtc().toIso8601String();
         }
+      }
+      if (json['deadline'] != null) {
+        final deadline = Map<String, dynamic>.from(json['deadline'] as Map);
+        deadline['at'] = DateTime.parse(
+          deadline['at'] as String,
+        ).toUtc().toIso8601String();
+        json['deadline'] = deadline;
       }
       json['attempts'] = (json['attempts'] as List)
           .map(
@@ -213,7 +220,7 @@ class SyncService extends ChangeNotifier with WidgetsBindingObserver {
     } on PostgrestException catch (e) {
       if (generation != _generation || _disposed) return;
       error = e.code == 'PGRST202' || e.code == '42P01'
-          ? 'Database setup is needed. Run the Small Memo finished/archive migration (202610240002) in Supabase after the initial sync and priority/order migrations, then tap Sync now.'
+          ? 'Database setup is needed. Run the Small Memo deadlines migration (202611030001) in Supabase after the initial sync, priority/order, and finished/archive migrations, then tap Sync now.'
           : 'Sync was rejected. Check your account and database setup, then retry. Local changes are safe.';
     } on AuthException catch (_) {
       if (generation != _generation || _disposed) return;
