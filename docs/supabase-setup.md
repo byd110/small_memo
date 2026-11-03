@@ -51,6 +51,15 @@ select
    where oid = to_regprocedure('public.memo_sync_v4(jsonb)')) as runs_with_owner_permissions;
 ```
 
+If Error details says `column "priority" of relation "memo_tasks" does not exist`,
+the priority/order columns are missing even though a newer sync function exists.
+Run [`restore_priority_order.sql`](../supabase/repairs/restore_priority_order.sql)
+in the SQL Editor, then tap **Sync now**. This repair adds missing priority/order
+columns without changing existing task descriptions, attempts, deadlines, or
+archive state. It initializes order only if the position column was absent;
+existing priorities and manual positions are preserved on repeat runs. It does
+not recreate sync functions, so the newer sync endpoint must already be present.
+
 `PGRST202` means the API cannot find the function. If it exists and permissions
 are correct, [Supabase documents refreshing the API schema cache](https://supabase.com/kb/troubleshooting/refresh-postgrest-schema)
 with `NOTIFY pgrst, 'reload schema';` in the SQL Editor. Other rejection codes need

@@ -49,6 +49,8 @@ jobs:
       - run: psql -v ON_ERROR_STOP=1 -f supabase/tests/archive.sql
       - run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/202611030001_deadlines.sql
       - run: psql -v ON_ERROR_STOP=1 -f supabase/tests/deadlines.sql
+      - run: createdb small_memo_priority_repair
+      - run: psql -v ON_ERROR_STOP=1 -d small_memo_priority_repair -f supabase/tests/priority_repair.sql
 
   native:
     needs: [check, database]
