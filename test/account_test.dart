@@ -39,7 +39,10 @@ void main() {
         authOptions: const AuthClientOptions(autoRefreshToken: false),
       ),
     ))!;
-    final sync = SyncService(controller, dir, client);
+    final sync = SyncService(controller, dir, client)
+      ..error = 'Sync was rejected.'
+      ..errorDetails =
+          'Code: 23514\nA database constraint rejected this change.';
     addTearDown(() async {
       sync.dispose();
       await tester.runAsync(client.dispose);
@@ -48,6 +51,11 @@ void main() {
     expect(tester.takeException(), isNull);
     await tester.tap(find.byTooltip('Account & sync'));
     await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Error details'));
+    await tester.tap(find.text('Error details'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Code: 23514'), findsOneWidget);
+    await tester.ensureVisible(find.text('Sign in'));
     await tester.tap(find.text('Sign in'));
     await tester.pump();
     expect(find.text('Enter your email address and password.'), findsOneWidget);

@@ -234,6 +234,56 @@ void main() {
   );
 
   test(
+    'server rejection exposes code/message and preserves edits for retry',
+    () async {
+      final store = makeStore();
+      final controller = TaskController(store);
+      await controller.load();
+      await controller.add('Keep pending');
+      final client = SupabaseClient(
+        'https://example.com',
+        'test',
+        authOptions: const AuthClientOptions(autoRefreshToken: false),
+      );
+      await setUser(client, owner);
+      final remote = DelayedRemote();
+      final service = SyncService(
+        controller,
+        directory,
+        client,
+        remote: remote,
+      );
+      addTearDown(() async {
+        service.dispose();
+        await client.dispose();
+      });
+      final operation = store.pending.single.id;
+      final rejected = service.sync();
+      remote.replies.single.completeError(
+        const PostgrestException(
+          code: '23514',
+          message: 'new row violates check constraint',
+          details: 'private failing row',
+          hint: 'private hint',
+        ),
+      );
+      await rejected;
+      expect(
+        service.errorDetails,
+        'Code: 23514\nnew row violates check constraint',
+      );
+      expect(service.errorDetails, isNot(contains('private')));
+      expect(store.pending.single.id, operation);
+      final retry = service.sync();
+      remote.replies.last.complete(controller.tasks);
+      await retry;
+      expect(service.errorDetails, isNull);
+      expect(service.error, isNull);
+      expect(store.pending, isEmpty);
+    },
+  );
+
+  test(
     'account change during request cannot replace or upload the other account cache',
     () async {
       final store = makeStore();

@@ -142,6 +142,12 @@ class _AccountPageState extends State<AccountPage> {
                   ),
                   const SizedBox(height: 12),
                   Text(sync.status),
+                  if (sync.store != null)
+                    Text(
+                      sync.pendingCount == 0
+                          ? 'No local changes waiting to upload'
+                          : '${sync.pendingCount} local changes waiting to upload',
+                    ),
                   if (sync.lastSynced != null)
                     Text(
                       'Last synced: ${MaterialLocalizations.of(context).formatTimeOfDay(TimeOfDay.fromDateTime(sync.lastSynced!))}',
@@ -218,6 +224,16 @@ class _AccountPageState extends State<AccountPage> {
                         color: Theme.of(context).colorScheme.error,
                       ),
                     ),
+                  ),
+                if (sync.errorDetails != null)
+                  ExpansionTile(
+                    title: const Text('Error details'),
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: SelectableText(sync.errorDetails!),
+                      ),
+                    ],
                   ),
               ],
             ),

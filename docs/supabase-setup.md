@@ -30,6 +30,33 @@ function; it derives ownership from their verified session, never a client-suppl
 account ID. Direct client writes to the tables are denied. The publishable key
 alone cannot read tasks or call sync. Project administrators retain database access.
 
+## Troubleshooting an existing setup
+
+If a migration says a column already exists, do not delete the column or rerun
+older migrations. The migration may already have been applied. In app 0.6.1 and
+later, open **Account & sync**, tap **Sync now**, and expand **Error details**.
+Copy the code and message when reporting the problem. The page also shows how
+many local changes are still waiting to upload. Previously synced tasks can
+remain visible even if a later request fails.
+
+For the deadline sync endpoint, this read-only query checks its presence and
+permissions:
+
+```sql
+select
+  to_regprocedure('public.memo_sync_v4(jsonb)') is not null as sync_exists,
+  has_function_privilege('authenticated',
+    to_regprocedure('public.memo_sync_v4(jsonb)'), 'EXECUTE') as signed_in_can_sync,
+  (select prosecdef from pg_proc
+   where oid = to_regprocedure('public.memo_sync_v4(jsonb)')) as runs_with_owner_permissions;
+```
+
+`PGRST202` means the API cannot find the function. If it exists and permissions
+are correct, [Supabase documents refreshing the API schema cache](https://supabase.com/kb/troubleshooting/refresh-postgrest-schema)
+with `NOTIFY pgrst, 'reload schema';` in the SQL Editor. Other rejection codes need
+their specific error message; repeating the migration is not a general fix.
+Local edits remain queued after a rejected request and retry with the same IDs.
+
 ## 2. Create your app account
 
 For this personal project, the easiest setup is **Authentication → Users → Add

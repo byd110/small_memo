@@ -95,6 +95,7 @@ class SyncService extends ChangeNotifier with WidgetsBindingObserver {
   bool switching = false;
   bool _disposed = false;
   String? error;
+  String? errorDetails;
   DateTime? lastSynced;
   String? get email => client.auth.currentUser?.email;
   SyncTaskStore? get store => controller.store is SyncTaskStore
@@ -125,6 +126,7 @@ class SyncService extends ChangeNotifier with WidgetsBindingObserver {
         _queueAccount();
       },
       onError: (Object _) {
+        errorDetails = null;
         error =
             'Sign-in could not refresh. Your changes remain saved locally. Try signing in again.';
         notifyListeners();
@@ -146,6 +148,7 @@ class SyncService extends ChangeNotifier with WidgetsBindingObserver {
       switching = true;
       lastSynced = null;
       error = null;
+      errorDetails = null;
       notifyListeners();
       // Let an already-started disk write finish before closing its file lock.
       while (controller.busy && !_disposed) {
@@ -198,6 +201,7 @@ class SyncService extends ChangeNotifier with WidgetsBindingObserver {
     final generation = _generation;
     syncing = true;
     error = null;
+    errorDetails = null;
     notifyListeners();
     try {
       do {
@@ -219,9 +223,19 @@ class SyncService extends ChangeNotifier with WidgetsBindingObserver {
       } while (target.pending.isNotEmpty && generation == _generation);
     } on PostgrestException catch (e) {
       if (generation != _generation || _disposed) return;
-      error = e.code == 'PGRST202' || e.code == '42P01'
-          ? 'Database setup is needed. Run the Small Memo deadlines migration (202611030001) in Supabase after the initial sync, priority/order, and finished/archive migrations, then tap Sync now.'
-          : 'Sync was rejected. Check your account and database setup, then retry. Local changes are safe.';
+      // Keep server code/message available for diagnosis. Do not expose the
+      // optional details/hint fields, which can include an entire failing row.
+      errorDetails = 'Code: ${e.code ?? "unknown"}\n${e.message}';
+      error = switch (e.code) {
+        'PGRST202' =>
+          'The sync function could not be found. Check database setup; if it is already installed, refresh the Supabase API schema. Your changes remain saved locally.',
+        '42P01' =>
+          'A sync database table is missing. Check the database setup. Your changes remain saved locally.',
+        '42501' =>
+          'Supabase denied permission to sync. Check Error details below. Your changes remain saved locally.',
+        _ =>
+          'Sync was rejected. Check Error details below. Your changes remain saved locally.',
+      };
     } on AuthException catch (_) {
       if (generation != _generation || _disposed) return;
       error =
